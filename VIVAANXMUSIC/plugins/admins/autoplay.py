@@ -1,50 +1,88 @@
 from pyrogram import filters
-from pyrogram.types import Message
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 from VIVAANXMUSIC import app
 from VIVAANXMUSIC.utils.database import get_autoplay, get_cmode, set_autoplay
 from VIVAANXMUSIC.utils.decorators.admins import AdminActual
-from VIVAANXMUSIC.utils.inline import close_markup
 from config import BANNED_USERS
+
+
+# 🎨 Fancy Button UI
+def autoplay_markup():
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("✨ ᴇɴᴀʙʟᴇ", callback_data="autoplay_on"),
+                InlineKeyboardButton("⚡ ᴅɪꜱᴀʙʟᴇ", callback_data="autoplay_off"),
+            ],
+            [
+                InlineKeyboardButton("🔄 ʀᴇꜰʀᴇꜱʜ", callback_data="autoplay_refresh")
+            ]
+        ]
+    )
 
 
 @app.on_message(filters.command(["autoplay", "cautoplay"]) & filters.group & ~BANNED_USERS)
 @AdminActual
 async def autoplay_control(_, message: Message, strings):
-    usage = strings["admin_49"]
+
     command = message.command[0].lower()
 
     if command.startswith("c"):
         chat_id = await get_cmode(message.chat.id)
         if chat_id is None:
-            return await message.reply_text(strings["setting_7"])
+            return await message.reply_text("❌ ᴄʜᴀɴɴᴇʟ ᴍᴏᴅᴇ ɴᴏᴛ ᴇɴᴀʙʟᴇᴅ.")
         try:
             await app.get_chat(chat_id)
         except Exception:
-            return await message.reply_text(strings["cplay_4"])
+            return await message.reply_text("❌ ɪɴᴠᴀʟɪᴅ ʟɪɴᴋᴇᴅ ᴄʜᴀɴɴᴇʟ.")
     else:
         chat_id = message.chat.id
 
-    if len(message.command) == 1:
-        status = "enabled" if await get_autoplay(chat_id) else "disabled"
-        return await message.reply_text(
-            strings["admin_52"].format(status),
-            reply_markup=close_markup(strings),
-        )
+    status = "✨ ᴇɴᴀʙʟᴇᴅ" if await get_autoplay(chat_id) else "⚡ ᴅɪꜱᴀʙʟᴇᴅ"
 
-    state = message.text.split(None, 1)[1].strip().lower()
-    if state in {"on", "enable", "enabled", "yes"}:
+    await message.reply_text(
+        f"🎛 **ᴀᴜᴛᴏᴘʟᴀʏ ᴄᴏɴᴛʀᴏʟ ᴘᴀɴᴇʟ**\n\n"
+        f"➻ ꜱᴛᴀᴛᴜꜱ : {status}\n\n"
+        f"⟢ ᴜꜱᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴᴛʀᴏʟ",
+        reply_markup=autoplay_markup()
+    )
+
+
+# 🔘 Button Handler
+@app.on_callback_query(filters.regex("^autoplay_"))
+async def autoplay_buttons(client, callback_query):
+
+    data = callback_query.data
+    chat_id = callback_query.message.chat.id
+
+    if data == "autoplay_on":
         await set_autoplay(chat_id, True)
-        return await message.reply_text(
-            strings["admin_50"].format(message.from_user.mention),
-            reply_markup=close_markup(strings),
-        )
+        text = "✨ ᴀᴜᴛᴏᴘʟᴀʏ ᴇɴᴀʙʟᴇᴅ"
 
-    if state in {"off", "disable", "disabled", "no"}:
+    elif data == "autoplay_off":
         await set_autoplay(chat_id, False)
-        return await message.reply_text(
-            strings["admin_51"].format(message.from_user.mention),
-            reply_markup=close_markup(strings),
+        text = "⚡ ᴀᴜᴛᴏᴘʟᴀʏ ᴅɪꜱᴀʙʟᴇᴅ"
+
+    elif data == "autoplay_refresh":
+        status = "✨ ᴇɴᴀʙʟᴇᴅ" if await get_autoplay(chat_id) else "⚡ ᴅɪꜱᴀʙʟᴇᴅ"
+        return await callback_query.message.edit_text(
+            f"🎛 **ᴀᴜᴛᴏᴘʟᴀʏ ᴄᴏɴᴛʀᴏʟ ᴘᴀɴᴇʟ**\n\n"
+            f"➻ ꜱᴛᴀᴛᴜꜱ : {status}\n\n"
+            f"⟢ ᴜꜱᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴᴛʀᴏʟ",
+            reply_markup=autoplay_markup()
         )
 
-    return await message.reply_text(usage, reply_markup=close_markup(strings))
+    else:
+        return
+
+    await callback_query.answer("ᴜᴘᴅᴀᴛᴇᴅ ✓")
+
+    status = "✨ ᴇɴᴀʙʟᴇᴅ" if await get_autoplay(chat_id) else "⚡ ᴅɪꜱᴀʙʟᴇᴅ"
+
+    await callback_query.message.edit_text(
+        f"🎛 **ᴀᴜᴛᴏᴘʟᴀʏ ᴄᴏɴᴛʀᴏʟ ᴘᴀɴᴇʟ**\n\n"
+        f"➻ ꜱᴛᴀᴛᴜꜱ : {status}\n\n"
+        f"⟢ ᴜꜱᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴᴛʀᴏʟ",
+        reply_markup=autoplay_markup()
+    )
