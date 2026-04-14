@@ -18,11 +18,11 @@ try:
 except ImportError:
     Recommendations = None
 import base64
-from VIVAANXMUSIC import LOGGER
-from VIVAANXMUSIC.utils.database import is_on_off
-from VIVAANXMUSIC.utils.formatters import time_to_seconds
-from VIVAANXMUSIC.utils.url_guard import is_safe_media_url
-from VIVAANXMUSIC.security import build_subprocess_env
+from ISTKHAR import LOGGER
+from ISTKHAR.utils.database import is_on_off
+from ISTKHAR.utils.formatters import time_to_seconds
+from ISTKHAR.utils.url_guard import is_safe_media_url
+from ISTKHAR.security import build_subprocess_env
 from config import DURATION_LIMIT, YT_API_KEY, YTPROXY_URL as YTPROXY
 
 logger = LOGGER(__name__)
