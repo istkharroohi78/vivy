@@ -1,161 +1,160 @@
-import re
 from typing import Union
-
-from pyrogram import Client, filters, types
-from pyrogram.types import InlineKeyboardMarkup, Message
-
+import random, config 
+from pyrogram import filters, types, Client, enums
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputMediaPhoto
 from VIVAANXMUSIC import app
+from VIVAANXMUSIC.utils import help_pannel
 from VIVAANXMUSIC.utils.database import get_lang
 from VIVAANXMUSIC.utils.decorators.language import LanguageStart, languageCB
-from VIVAANXMUSIC.utils.inline.help import (
-    action_sub_menu,
-    first_page,
-    help_back_markup,
-    private_help_panel,
-    second_page,
-)
-from VIVAANXMUSIC.utils.inline.start import private_panel
-from config import BANNED_USERS, HELP_IMG_URL, SUPPORT_CHAT
+from VIVAANXMUSIC.utils.inline.help import help_back_markup, private_help_panel
+from config import BANNED_USERS, START_IMG_URL, SUPPORT_CHAT
 from strings import get_string, helpers
+
+# ====== AUTO FIX (IMPORTANT) ======
+if not hasattr(helpers, "HELP_ABOUT"):
+    helpers.HELP_ABOUT = "🤖 Hello {0}"
+
+if not hasattr(helpers, "HELP_SUPPORT"):
+    helpers.HELP_SUPPORT = "🛠 Hello {0}"
+
+for i in range(1, 16):
+    if not hasattr(helpers, f"HELP_{i}"):
+        setattr(helpers, f"HELP_{i}", f"Help section {i}")
+# =================================
+
+START_IMG = [
+    "https://files.catbox.moe/x5lytj.jpg",
+    "https://files.catbox.moe/psya34.jpg",
+    "https://files.catbox.moe/leaexg.jpg",
+    "https://files.catbox.moe/b0e4vk.jpg",
+    "https://files.catbox.moe/1b1wap.jpg",
+    "https://files.catbox.moe/ommjjk.jpg",
+    "https://files.catbox.moe/onurxm.jpg",
+    "https://files.catbox.moe/97v75k.jpg",
+    "https://files.catbox.moe/t833zy.jpg",
+    "https://files.catbox.moe/472piq.jpg",
+    "https://files.catbox.moe/qwjeyk.jpg",
+    "https://files.catbox.moe/t0hopv.jpg",
+    "https://files.catbox.moe/u5ux0j.jpg",
+    "https://files.catbox.moe/h1yk4w.jpg",
+    "https://files.catbox.moe/gl5rg8.jpg",
+]
+
+
+class BUTTONS(object):
+    ABUTTON = [
+        [
+            InlineKeyboardButton("˹ sυᴘᴘσʀᴛ ˼", url="https://t.me/+odmRO_JAHs85YWNh"),
+            InlineKeyboardButton("˹ υᴘᴅᴧᴛєs ˼", url="https://t.me/+odmRO_JAHs85YWNh")
+        ],
+        [
+            InlineKeyboardButton("˹ ❍ᴡηєʀ ˼", user_id=config.OWNER_ID),
+            InlineKeyboardButton("• ʙᴧᴄᴋ •", callback_data="settingsback_helper")
+        ]
+    ]
+
+    INFO_BUTTON = [
+        [
+            InlineKeyboardButton("˹ ʀєᴘσ ˼", callback_data="gib_source"),
+            InlineKeyboardButton("˹ ʏᴛ-ᴀᴘɪ ˼", callback_data="bot_info_data"),
+            InlineKeyboardButton("˹ ʟᴧηɢᴜᴧɢє ˼", callback_data="LG"),
+        ],
+        [
+                    InlineKeyboardButton("• ʙᴧᴄᴋ •", callback_data="settingsback_helper"),
+        ]
+    ]
 
 
 @app.on_message(filters.command(["help"]) & filters.private & ~BANNED_USERS)
-@app.on_callback_query(filters.regex("open_help") & ~BANNED_USERS)
-@LanguageStart
-async def helper_private(
-    client: Client,
-    update: Union[Message, types.CallbackQuery],
-    _,
-):
-    is_cb = isinstance(update, types.CallbackQuery)
-    language = await get_lang(update.from_user.id)
-    _ = get_string(language)
+@app.on_callback_query(filters.regex("settings_back_helper") & ~BANNED_USERS)
+async def helper_private(client: app, update: Union[types.Message, types.CallbackQuery]):
+    is_callback = isinstance(update, types.CallbackQuery)
 
-    keyboard = first_page(_)
-    caption = _["help_1"].format(SUPPORT_CHAT)
+    if is_callback:
+        try:
+            await update.answer()
+        except:
+            pass
 
-    if is_cb:
-        await update.answer()
-        await update.message.edit_caption(caption, reply_markup=keyboard)
-        return
+        chat_id = update.message.chat.id
+        language = await get_lang(chat_id)
+        _ = get_string(language)
+        keyboard = help_pannel(_, True)
 
-    await update.delete()
-    await update.reply_photo(
-        photo=HELP_IMG_URL,
-        caption=caption,
-        reply_markup=keyboard,
-    )
+        await update.edit_message_text(
+            _["help_1"].format(SUPPORT_CHAT),
+            reply_markup=keyboard
+        )
+    else:
+        try:
+            await update.delete()
+        except:
+            pass
+
+        language = await get_lang(update.chat.id)
+        _ = get_string(language)
+        keyboard = help_pannel(_)
+
+        await update.reply_photo(
+            photo=START_IMG_URL,
+            caption=_["help_1"].format(SUPPORT_CHAT),
+            reply_markup=keyboard,
+        )
 
 
 @app.on_message(filters.command(["help"]) & filters.group & ~BANNED_USERS)
 @LanguageStart
-async def help_com_group(client: Client, message: Message, _):
+async def help_com_group(client, message: Message, _):
     keyboard = private_help_panel(_)
-    await message.reply_text(
-        _["help_2"],
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        disable_web_page_preview=True,
+    await message.reply_text(_["help_2"], reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+@app.on_callback_query(filters.regex("abot_cb") & ~BANNED_USERS)
+async def about_cb(client, CallbackQuery):
+    bot = await client.get_me()
+    bot_mention = bot.mention
+
+    await CallbackQuery.edit_message_text(
+        helpers.HELP_ABOUT.format(bot_mention),
+        reply_markup=InlineKeyboardMarkup(BUTTONS.INFO_BUTTON),
     )
 
 
-@app.on_callback_query(filters.regex(r"help_callback hb(\d+)_p(\d+)") & ~BANNED_USERS)
+@app.on_callback_query(filters.regex("sbot_cb") & ~BANNED_USERS)
+async def support_cb(client, CallbackQuery):
+    bot = await client.get_me()
+    bot_mention = bot.mention
+
+    await CallbackQuery.edit_message_text(
+        helpers.HELP_SUPPORT.format(bot_mention),
+        reply_markup=InlineKeyboardMarkup(BUTTONS.ABUTTON),
+    )
+
+
+@app.on_callback_query(filters.regex("back_cb") & ~BANNED_USERS)
+async def back_cb(client, CallbackQuery):
+    photo = random.choice(START_IMG)
+    bot = await client.get_me()
+    bot_mention = bot.mention
+
+    await CallbackQuery.edit_message_media(
+        media=InputMediaPhoto(
+            media=photo,
+            caption=helpers.HELP_ABOUT.format(bot_mention)
+        ),
+        reply_markup=InlineKeyboardMarkup(BUTTONS.INFO_BUTTON)
+    )
+
+
+@app.on_callback_query(filters.regex("help_callback") & ~BANNED_USERS)
 @languageCB
-async def helper_cb(client: Client, callback_query: types.CallbackQuery, _):
-    match = re.match(r"help_callback hb(\d+)_p(\d+)", callback_query.data)
-    if not match:
-        return await callback_query.answer("Invalid callback.", show_alert=True)
+async def helper_cb(client, CallbackQuery, _):
+    callback_data = CallbackQuery.data.strip()
+    cb = callback_data.split(None, 1)[1]
+    keyboard = help_back_markup(_)
 
-    number = int(match.group(1))
-    current_page = int(match.group(2))
-
-    if number == 1:
-        await callback_query.edit_message_text(
-            _["S_B_M"],
-            reply_markup=action_sub_menu(_, current_page),
-            disable_web_page_preview=True,
-        )
-        return
-
-    help_text = getattr(helpers, f"HELP_{number}", None)
-    if not help_text:
-        return await callback_query.answer("Invalid help topic.", show_alert=True)
-
-    await callback_query.edit_message_text(
-        help_text,
-        reply_markup=help_back_markup(_, current_page),
-        disable_web_page_preview=True,
-    )
-
-
-@app.on_callback_query(filters.regex(r"help_next_(\d+)") & ~BANNED_USERS)
-@languageCB
-async def help_next_cb(client: Client, callback_query: types.CallbackQuery, _):
-    if callback_query.data != "help_next_2":
-        return await callback_query.answer("No more pages.", show_alert=True)
-
-    await callback_query.edit_message_text(
-        _["help_1"].format(SUPPORT_CHAT),
-        reply_markup=second_page(_),
-        disable_web_page_preview=True,
-    )
-
-
-@app.on_callback_query(filters.regex(r"help_prev_(\d+)") & ~BANNED_USERS)
-@languageCB
-async def help_prev_cb(client: Client, callback_query: types.CallbackQuery, _):
-    if callback_query.data != "help_prev_1":
-        return await callback_query.answer("No previous page.", show_alert=True)
-
-    await callback_query.edit_message_text(
-        _["help_1"].format(SUPPORT_CHAT),
-        reply_markup=first_page(_),
-        disable_web_page_preview=True,
-    )
-
-
-@app.on_callback_query(filters.regex(r"help_back_(\d+)") & ~BANNED_USERS)
-@languageCB
-async def help_back_cb(client: Client, callback_query: types.CallbackQuery, _):
-    page = callback_query.data.split("_")[-1]
-    if page == "1":
-        keyboard = first_page(_)
-    elif page == "2":
-        keyboard = second_page(_)
-    else:
-        return await callback_query.answer("Invalid page.", show_alert=True)
-
-    await callback_query.edit_message_text(
-        _["help_1"].format(SUPPORT_CHAT),
-        reply_markup=keyboard,
-        disable_web_page_preview=True,
-    )
-
-
-@app.on_callback_query(filters.regex("action_prom_1") & ~BANNED_USERS)
-@languageCB
-async def action_prom_cb(client: Client, callback_query: types.CallbackQuery, _):
-    await callback_query.edit_message_text(
-        helpers.HELP_1_PROMO,
-        reply_markup=help_back_markup(_, 1),
-        disable_web_page_preview=True,
-    )
-
-
-@app.on_callback_query(filters.regex("action_pun_1") & ~BANNED_USERS)
-@languageCB
-async def action_pun_cb(client: Client, callback_query: types.CallbackQuery, _):
-    await callback_query.edit_message_text(
-        helpers.HELP_1_PUNISH,
-        reply_markup=help_back_markup(_, 1),
-        disable_web_page_preview=True,
-    )
-
-
-@app.on_callback_query(filters.regex("back_to_main") & ~BANNED_USERS)
-@languageCB
-async def back_to_main_cb(client: Client, callback_query: types.CallbackQuery, _):
-    out = private_panel(_)
-    await callback_query.edit_message_caption(
-        _["start_2"].format(callback_query.from_user.mention, app.mention),
-        reply_markup=InlineKeyboardMarkup(out),
-    )
+    if cb.startswith("hb"):
+        num = cb.replace("hb", "")
+        text = getattr(helpers, f"HELP_{num}", "Help section")
+        await CallbackQuery.edit_message_text(text, reply_markup=keyboard)
+    
