@@ -1,157 +1,130 @@
-import asyncio
-import random
 import time
+import random
+import asyncio
 from pyrogram import filters
 from pyrogram.enums import ChatType
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
-from youtubesearchpython.future import VideosSearch
+#from youtubesearchpython.__future__ import VideosSearch
+from py_yt import VideosSearch
 
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 import config
 from VIVAANXMUSIC import app
 from VIVAANXMUSIC.misc import _boot_
 from VIVAANXMUSIC.plugins.sudo.sudoers import sudoers_list
+from VIVAANXMUSIC.utils.database import get_served_chats, get_served_users, get_sudoers
 from VIVAANXMUSIC.utils import bot_sys_stats
 from VIVAANXMUSIC.utils.database import (
     add_served_chat,
     add_served_user,
     blacklisted_chats,
     get_lang,
-    get_served_chats,
-    get_served_users,
     is_banned_user,
     is_on_off,
 )
 from VIVAANXMUSIC.utils.decorators.language import LanguageStart
 from VIVAANXMUSIC.utils.formatters import get_readable_time
-from VIVAANXMUSIC.button_styles import primary_button, success_button
-from VIVAANXMUSIC.utils.inline.start import private_panel, start_panel
-from VIVAANXMUSIC.utils.inline.help import first_page
-from config import BANNED_USERS, AYUV, HELP_IMG_URL, START_VIDS, STICKERS
+from VIVAANXMUSIC.utils.inline import help_pannel, private_panel, start_panel
+from config import BANNED_USERS
 from strings import get_string
 
 
-async def delete_sticker_after_delay(message: Message, delay: int) -> None:
-    await asyncio.sleep(delay)
-    try:
-        await message.delete()
-    except Exception:
-        pass
+NEXI_VID = [
+    "https://files.catbox.moe/x5lytj.jpg",
+    "https://files.catbox.moe/psya34.jpg",
+    "https://files.catbox.moe/leaexg.jpg",
+    "https://files.catbox.moe/b0e4vk.jpg",
+    "https://files.catbox.moe/1b1wap.jpg",
+    "https://files.catbox.moe/ommjjk.jpg",
+    "https://files.catbox.moe/onurxm.jpg",
+    "https://files.catbox.moe/97v75k.jpg",
+    "https://files.catbox.moe/t833zy.jpg",
+    "https://files.catbox.moe/472piq.jpg",
+    "https://files.catbox.moe/qwjeyk.jpg",
+    "https://files.catbox.moe/t0hopv.jpg",
+    "https://files.catbox.moe/u5ux0j.jpg",
+    "https://files.catbox.moe/h1yk4w.jpg",
+    "https://files.catbox.moe/gl5rg8.jpg",
+]
 
 
 @app.on_message(filters.command(["start"]) & filters.private & ~BANNED_USERS)
 @LanguageStart
 async def start_pm(client, message: Message, _):
-    try:
-        await add_served_user(message.from_user.id)
-    except Exception:
-        pass
+    await add_served_user(message.from_user.id)
 
     if len(message.text.split()) > 1:
         name = message.text.split(None, 1)[1]
 
-        if name.startswith("help"):
-            keyboard = first_page(_)
+        if name[0:3] == "del":
+            await del_plist_msg(client=client, message=message, _=_)
+        
+        if name[0:4] == "help":
+            keyboard = help_pannel(_)
             return await message.reply_photo(
-                photo=HELP_IMG_URL,
+                random.choice(NEXI_VID),
                 caption=_["help_1"].format(config.SUPPORT_CHAT),
                 reply_markup=keyboard,
             )
 
-        if name.startswith("sud"):
+        if name[0:3] == "sud":
             await sudoers_list(client=client, message=message, _=_)
             if await is_on_off(2):
-                username = f"@{message.from_user.username}" if message.from_user.username else "(none)"
-                await app.send_message(
+                return await app.send_message(
                     chat_id=config.LOGGER_ID,
-                    text=(
-                        f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>sᴜᴅᴏʟɪsᴛ</b>.\n\n"
-                        f"<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n"
-                        f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> {username}"
-                    ),
+                    text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>sᴜᴅᴏʟɪsᴛ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
                 )
             return
 
-        if name.startswith("inf"):
+        if name[0:3] == "inf":
             m = await message.reply_text("🔎")
-            try:
-                vid_id = str(name).replace("info_", "", 1)
-                query = f"https://www.youtube.com/watch?v={vid_id}"
-                results = VideosSearch(query, limit=1)
-                data = await results.next()
-                result = (data.get("result") or [None])[0]
-                if not result:
-                    await m.edit_text("No results found.")
-                    return
-
-                title = result.get("title") or "Unknown"
-                duration = result.get("duration") or "Unknown"
-                views = (result.get("viewCount") or {}).get("short") or "Unknown"
-                thumbnail = ((result.get("thumbnails") or [{}])[0].get("url") or "").split("?")[0]
-                channellink = (result.get("channel") or {}).get("link") or "https://youtube.com"
-                channel = (result.get("channel") or {}).get("name") or "Unknown"
-                link = result.get("link") or query
-                published = result.get("publishedTime") or "Unknown"
-
-                searched_text = _["start_6"].format(title, duration, views, published, channellink, channel, app.mention)
-                key = InlineKeyboardMarkup(
-                    [[
-                        primary_button(text=_["S_B_6"], url=link),
-                        success_button(text=_["S_B_4"], url=config.SUPPORT_CHAT),
-                    ]]
+            query = (str(name)).replace("info_", "", 1)
+            query = f"https://www.youtube.com/watch?v={query}"
+            results = VideosSearch(query, limit=1)
+            for result in (await results.next())["result"]:
+                title = result["title"]
+                duration = result["duration"]
+                views = result["viewCount"]["short"]
+                thumbnail = result["thumbnails"][0]["url"].split("?")[0]
+                channellink = result["channel"]["link"]
+                channel = result["channel"]["name"]
+                link = result["link"]
+                published = result["publishedTime"]
+            searched_text = _["start_6"].format(
+                title, duration, views, published, channellink, channel, app.mention
+            )
+            key = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(text=_["S_B_8"], url=link),
+                        InlineKeyboardButton(text=_["S_B_9"], url=config.SUPPORT_CHAT),
+                    ],
+                ]
+            )
+            await m.delete()
+            await app.send_photo(
+                chat_id=message.chat.id,
+                photo=thumbnail,
+                caption=searched_text,
+                reply_markup=key,
+            )
+            if await is_on_off(2):
+                return await app.send_message(
+                    chat_id=config.LOGGER_ID,
+                    text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ᴛʀᴀᴄᴋ ɪɴғᴏʀᴍᴀᴛɪᴏɴ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
                 )
-
-                await m.delete()
-
-                await app.send_photo(
-                    chat_id=message.chat.id,
-                    photo=thumbnail or HELP_IMG_URL,
-                    caption=searched_text,
-                    reply_markup=key,
-                )
-
-                if await is_on_off(2):
-                    username = f"@{message.from_user.username}" if message.from_user.username else "(none)"
-                    await app.send_message(
-                        chat_id=config.LOGGER_ID,
-                        text=(
-                            f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ᴛʀᴀᴄᴋ ɪɴғᴏʀᴍᴀᴛɪᴏɴ</b>.\n\n"
-                            f"<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n"
-                            f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> {username}"
-                        ),
-                    )
-            except Exception as e:
-                await m.edit_text(f"Error: {e}")
-            return
-
-    out = private_panel(_)
-    sticker_message = await message.reply_sticker(sticker=random.choice(STICKERS))
-    asyncio.create_task(delete_sticker_after_delay(sticker_message, 2))
-
-    served_chats_coro = get_served_chats()
-    served_users_coro = get_served_users()
-    stats_coro = bot_sys_stats()
-    served_chats, served_users, (UP, CPU, RAM, DISK) = await asyncio.gather(
-        served_chats_coro, served_users_coro, stats_coro
-    )
-
-    await message.reply_video(
-        random.choice(START_VIDS),
-        caption=random.choice(AYUV).format(
-            message.from_user.mention, app.mention, UP, DISK, CPU, RAM, len(served_users), len(served_chats)
-        ),
-        reply_markup=InlineKeyboardMarkup(out),
-    )
-
-    if await is_on_off(2):
-        username = f"@{message.from_user.username}" if message.from_user.username else "(none)"
-        await app.send_message(
-            chat_id=config.LOGGER_ID,
-            text=(
-                f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ.\n\n"
-                f"<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n"
-                f"<b>ᴜsᴇʀɴᴀᴍᴇ :</b> {username}"
-            ),
+    else:
+        out = private_panel(_)
+        await message.reply_photo(
+            random.choice(NEXI_VID),
+            caption=_["start_2"].format(message.from_user.mention, app.mention),
+            reply_markup=InlineKeyboardMarkup(out),
         )
+        if await is_on_off(2):
+            return await app.send_message(
+                chat_id=config.LOGGER_ID,
+                text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
+            )          
 
 
 @app.on_message(filters.command(["start"]) & filters.group & ~BANNED_USERS)
@@ -159,14 +132,11 @@ async def start_pm(client, message: Message, _):
 async def start_gp(client, message: Message, _):
     out = start_panel(_)
     uptime = int(time.time() - _boot_)
-    try:
-        await message.reply_video(
-            random.choice(START_VIDS),
-            caption=_["start_1"].format(app.mention, get_readable_time(uptime)),
-            reply_markup=InlineKeyboardMarkup(out),
-        )
-    except:
-        pass
+    await message.reply_photo(
+        random.choice(NEXI_VID),
+        caption=_["start_1"].format(app.mention, get_readable_time(uptime)),
+        reply_markup=InlineKeyboardMarkup(out),
+    )
     return await add_served_chat(message.chat.id)
 
 
@@ -176,18 +146,15 @@ async def welcome(client, message: Message):
         try:
             language = await get_lang(message.chat.id)
             _ = get_string(language)
-
             if await is_banned_user(member.id):
                 try:
                     await message.chat.ban_member(member.id)
-                except Exception:
+                except:
                     pass
-
             if member.id == app.id:
                 if message.chat.type != ChatType.SUPERGROUP:
                     await message.reply_text(_["start_4"])
                     return await app.leave_chat(message.chat.id)
-
                 if message.chat.id in await blacklisted_chats():
                     await message.reply_text(
                         _["start_5"].format(
@@ -200,8 +167,8 @@ async def welcome(client, message: Message):
                     return await app.leave_chat(message.chat.id)
 
                 out = start_panel(_)
-                await message.reply_video(
-                    random.choice(START_VIDS),
+                await message.reply_photo(
+                    random.choice(NEXI_VID),
                     caption=_["start_3"].format(
                         message.from_user.mention,
                         app.mention,
@@ -212,6 +179,5 @@ async def welcome(client, message: Message):
                 )
                 await add_served_chat(message.chat.id)
                 await message.stop_propagation()
-
         except Exception as ex:
             print(ex)
