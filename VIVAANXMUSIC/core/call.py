@@ -37,12 +37,17 @@ from VIVAANXMUSIC.utils.database import (
 )
 from VIVAANXMUSIC.utils.exceptions import AssistantErr
 from VIVAANXMUSIC.utils.formatters import check_duration, seconds_to_min, speed_converter
+
+# OLD (isko hata ya rehne de agar use ho raha hai)
 from VIVAANXMUSIC.utils.inline.play import stream_markup
+
+# 🔥 NEW PLAYER BUTTONS
+from VIVAANXMUSIC.utils.inline.player import player_markup
+
 from VIVAANXMUSIC.security import build_subprocess_env
 from VIVAANXMUSIC.utils.stream.autoclear import auto_clean
 from VIVAANXMUSIC.utils.stream.cards import schedule_stream_card
 from VIVAANXMUSIC.utils.errors import capture_internal_err, send_large_error
-
 autoend = {}
 counter = {}
 vc_join_monitors = {}
