@@ -24,7 +24,7 @@ MONGO_DB_URI = getenv("MONGO_DB_URI", None)
 LOGGER_ID = int(getenv("LOGGER_ID", -1003834337399))
 
 
- ── External APIs ──────────────────────────────────────────────────────────────
+#── External APIs ──────────────────────────────────────────────────────────────
 API_URL = getenv("API_URL")        # optional
 API_KEY = getenv("API_KEY")        # optional
 DEEP_API = getenv("DEEP_API")      # optional
