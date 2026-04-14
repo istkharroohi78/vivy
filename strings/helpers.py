@@ -218,5 +218,5 @@ HELP_11 = """
 """
 
 POWERED_BY = """
-<b>⊚ ᴘᴏᴡᴇʀᴇᴅ ʙʏ :- [˹ɪsᴛᴋʜᴀʀ ʙᴏᴛѕ˼](https://t.me/IamIstkhar)</b>
+<b>**⊚ ᴘᴏᴡᴇʀᴇᴅ ʙʏ :- [˹ɪsᴛᴋʜᴀʀ ʙᴏᴛѕ˼](https://t.me/IamIstkhar)</b>
 """
