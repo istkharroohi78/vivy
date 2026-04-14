@@ -1,13 +1,3 @@
-# ===========================================================
-# ©️ 2025-26 All Rights Reserved by ROOHI ISTKHAR (TEAM-ISTKHAR) 🚀
-# 
-# This source code is under MIT License 📜
-# ❌ Unauthorized forking, importing, or using this code
-#    without giving proper credit will result in legal action ⚠️
-# 
-# 📩 DM for permission : @ITZZ_ISTKHAR
-# ===========================================================
-
 from pyrogram import filters
 import random
 from pyrogram.enums import ChatType
@@ -21,8 +11,8 @@ from pyrogram.types import (
     Message,
 )
 
-from ISTKHAR import app
-from ISTKHAR.utils.database import (
+from VIVAANXMUSIC import app
+from VIVAANXMUSIC.utils.database import (
     add_nonadmin_chat,
     get_authuser,
     get_authuser_names,
@@ -38,15 +28,15 @@ from ISTKHAR.utils.database import (
     skip_off,
     skip_on,
 )
-from ISTKHAR.utils.decorators.admins import ActualAdminCB
-from ISTKHAR.utils.decorators.language import language, languageCB
-from ISTKHAR.utils.inline.settings import (
+from VIVAANXMUSIC.utils.decorators.admins import ActualAdminCB
+from VIVAANXMUSIC.utils.decorators.language import language, languageCB
+from VIVAANXMUSIC.utils.inline.settings import (
     auth_users_markup,
     playmode_users_markup,
     setting_markup,
     vote_mode_markup,
 )
-from ISTKHAR.utils.inline.start import private_panel
+from VIVAANXMUSIC.utils.inline.start import private_panel
 from config import BANNED_USERS, OWNER_ID
 
 
