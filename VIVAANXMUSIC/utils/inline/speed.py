@@ -1,39 +1,37 @@
-from pyrogram.types import InlineKeyboardMarkup
-
-from VIVAANXMUSIC.button_styles import danger_button, primary_button, success_button
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def speed_markup(_, chat_id):
     upl = InlineKeyboardMarkup(
         [
             [
-                primary_button(
+                InlineKeyboardButton(
                     text="🕒 0.5x",
                     callback_data=f"SpeedUP {chat_id}|0.5",
                 ),
-                primary_button(
+                InlineKeyboardButton(
                     text="🕓 0.75x",
                     callback_data=f"SpeedUP {chat_id}|0.75",
                 ),
             ],
             [
-                success_button(
+                InlineKeyboardButton(
                     text=_["P_B_4"],
                     callback_data=f"SpeedUP {chat_id}|1.0",
                 ),
             ],
             [
-                primary_button(
+                InlineKeyboardButton(
                     text="🕤 1.5x",
                     callback_data=f"SpeedUP {chat_id}|1.5",
                 ),
-                primary_button(
+                InlineKeyboardButton(
                     text="🕛 2.0x",
                     callback_data=f"SpeedUP {chat_id}|2.0",
                 ),
             ],
             [
-                danger_button(
+                InlineKeyboardButton(
                     text=_["CLOSE_BUTTON"],
                     callback_data="close",
                 ),
@@ -41,3 +39,4 @@ def speed_markup(_, chat_id):
         ]
     )
     return upl
+    
