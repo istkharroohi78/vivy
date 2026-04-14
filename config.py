@@ -27,8 +27,8 @@ LOGGER_ID = int(getenv("LOGGER_ID", "-1003834337399"))
 DEBUG_IGNORE_LOG = getenv("DEBUG_IGNORE_LOG", "False").lower() == "true"
 
 # ======================================================
-# 🔥 SUDO USERS
-AYU = [OWNER_ID]
+# ───── Bot Introduction Messages ───── #
+AYU = ["💞", "🦋", "🔍", "🧪", "⚡️", "🔥", "🎩", "🌈", "🍷", "🥂", "🥃", "🕊️", "🪄", "💌", "🧨"]
 
 # ======================================================
 # 🌐 APIs
