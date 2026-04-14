@@ -101,20 +101,18 @@ PING_IMG_URL = getenv("PING_IMG_URL", "https://files.catbox.moe/leaexg.jpg")
 PING_VID_URL = PING_IMG_URL
 START_VID_URL = START_IMG_URL
 
-YOUTUBE_IMG_URL = "https://files.catbox.moe/2y5o3g.jpg"
-SOUNDCLOUD_IMG_URL = "https://telegra.ph/file/d30d11c4365c025c25e3e.jpg"
-STREAM_IMG_URL = "https://telegra.ph/file/d30d11c4365c025c25e3e.jpg"
-
-TELEGRAM_AUDIO_URL = "https://files.catbox.moe/2y5o3g.jpg"
-TELEGRAM_VIDEO_URL = "https://files.catbox.moe/2y5o3g.jpg"
-
-SPOTIFY_ARTIST_IMG_URL = "https://files.catbox.moe/2y5o3g.jpg"
-SPOTIFY_ALBUM_IMG_URL = "https://files.catbox.moe/2y5o3g.jpg"
-SPOTIFY_PLAYLIST_IMG_URL = "https://telegra.ph/file/d30d11c4365c025c25e3e.jpg"
-
-PLAYLIST_IMG_URL = "https://files.catbox.moe/b0e4vk.jpg"
-STATS_IMG_URL = "https://files.catbox.moe/psya34.jpg"
-
+]
+HELP_IMG_URL = "https://files.catbox.moe/m3fyh9.jpg"
+PING_VID_URL = "https://files.catbox.moe/p82vwn.jpg"
+PLAYLIST_IMG_URL = "https://files.catbox.moe/9m0pys.jpg"
+STATS_VID_URL = "https://files.catbox.moe/gq4hkk.jpg"
+TELEGRAM_AUDIO_URL = "https://files.catbox.moe/p82vwn.jpg"
+TELEGRAM_VIDEO_URL = "https://files.catbox.moe/mmdz7d.jpg"
+STREAM_IMG_URL = "https://files.catbox.moe/3fl186.jpg"
+SOUNCLOUD_IMG_URL = "https://files.catbox.moe/drua0p.jpg"
+YOUTUBE_IMG_URL = "https://files.catbox.moe/0yxqt1.jpg"
+SPOTIFY_ARTIST_IMG_URL = SPOTIFY_ALBUM_IMG_URL = SPOTIFY_PLAYLIST_IMG_URL = YOUTUBE_IMG_URL
+# ── Helpers 
 # ======================================================
 # ⚙️ Runtime
 BANNED_USERS = filters.user()
