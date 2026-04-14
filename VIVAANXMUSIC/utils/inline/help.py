@@ -1,89 +1,101 @@
+from typing import Union
+
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from VIVAANXMUSIC import app
-from VIVAANXMUSIC.button_styles import danger_button, primary_button
 
 
-TOTAL_SECTIONS = 33
-BUTTON_LABEL_OVERRIDES = {
-    25: "Dᴏᴡɴʟᴏᴀᴅ",
-}
-
-
-def generate_help_buttons(_, start: int, end: int, current_page: int):
-    buttons = []
-    per_row = 3
-    for idx, section in enumerate(range(start, end + 1)):
-        if idx % per_row == 0:
-            buttons.append([])
-        buttons[-1].append(
-            InlineKeyboardButton(
-                text=BUTTON_LABEL_OVERRIDES.get(section, _[f"H_B_{section}"]),
-                callback_data=f"help_callback hb{section}_p{current_page}",
-            )
-        )
-    return buttons
-
-
-def first_page(_):
-    buttons = generate_help_buttons(_, 1, 15, current_page=1)
-    buttons.append(
-        [
-            primary_button(text="๏ ᴍᴇɴᴜ ๏", callback_data="back_to_main"),
-            primary_button(text="๏ ɴᴇxᴛ ๏", callback_data="help_next_2"),
-        ]
-    )
-    return InlineKeyboardMarkup(buttons)
-
-
-def second_page(_):
-    buttons = generate_help_buttons(_, 16, TOTAL_SECTIONS, current_page=2)
-    buttons.append(
-        [
-            primary_button(text="๏ ʙᴀᴄᴋ ๏", callback_data="help_prev_1"),
-            primary_button(text="๏ ᴍᴇɴᴜ ๏", callback_data="back_to_main"),
-        ]
-    )
-    return InlineKeyboardMarkup(buttons)
-
-
-def action_sub_menu(_, current_page: int):
-    return InlineKeyboardMarkup(
+def help_pannel(_, START: Union[bool, int] = None):
+    first = [InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data=f"close")]
+    second = [
+        InlineKeyboardButton(
+            text=_["BACK_BUTTON"],
+            callback_data=f"settingsback_helper",
+        ),
+    ]
+    mark = second if START else first
+    upl = InlineKeyboardMarkup(
         [
             [
-                primary_button(text=_["H_B_S_1"], callback_data="action_prom_1"),
-                primary_button(text=_["H_B_S_2"], callback_data="action_pun_1"),
-            ],
-            [
-                primary_button(
-                    text=_["BACK_BUTTON"],
-                    callback_data=f"help_back_{current_page}",
-                )
-            ],
-        ]
-    )
-
-
-def help_back_markup(_, current_page: int):
-    return InlineKeyboardMarkup(
-        [
-            [
-                primary_button(
-                    text=_["BACK_BUTTON"],
-                    callback_data=f"help_back_{current_page}",
+                InlineKeyboardButton(
+                    text=_["H_B_25"],
+                    callback_data="help_callback hb1",
                 ),
-                danger_button(text=_["CLOSE_BUTTON"], callback_data="close"),
+                InlineKeyboardButton(
+                    text=_["H_B_26"],
+                    callback_data="help_callback hb2",
+                ),
+                InlineKeyboardButton(
+                    text=_["H_B_28"],
+                    callback_data="help_callback hb3",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=_["H_B_27"],
+                    callback_data="help_callback hb4",
+                ),
+                InlineKeyboardButton(
+                    text=_["H_B_31"],
+                    callback_data="help_callback hb5",
+                ),
+                InlineKeyboardButton(
+                    text=_["H_B_29"],
+                    callback_data="help_callback hb6",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=_["H_B_33"],
+                    callback_data="help_callback hb7",
+                ),
+                InlineKeyboardButton(
+                    text=_["H_B_30"],
+                    callback_data="help_callback hb8",
+                ),
+                InlineKeyboardButton(
+                    text=_["H_B_32"],
+                    callback_data="help_callback hb9",
+                ),
+            ],
+            # Autoplay Or Nightmode Button
+            [
+                InlineKeyboardButton(
+                    text=_["H_B_34"],
+                    callback_data="help_callback hb10",
+                ),
+                InlineKeyboardButton(
+                    text=_["H_B_35"],
+                    callback_data="help_callback hb11",
+                ),
+            ],
+            mark,
+        ]
+    )
+    return upl
+
+
+def help_back_markup(_):
+    upl = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    text=_["BACK_BUTTON"],
+                    callback_data=f"settings_back_helper",
+                ),
             ]
         ]
     )
+    return upl
 
 
 def private_help_panel(_):
-    return [
+    buttons = [
         [
-            primary_button(
-                text=_["S_B_3"],
+            InlineKeyboardButton(
+                text=_["S_B_4"],
                 url=f"https://t.me/{app.username}?start=help",
-            )
-        ]
+            ),
+        ],
     ]
+    return buttons
