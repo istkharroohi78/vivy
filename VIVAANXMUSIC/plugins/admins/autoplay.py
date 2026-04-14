@@ -1,3 +1,4 @@
+import asyncio
 from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -7,7 +8,7 @@ from VIVAANXMUSIC.utils.decorators.admins import AdminActual
 from config import BANNED_USERS
 
 
-# 🎨 Fancy Button UI
+# 🎨 Fancy Buttons
 def autoplay_markup():
     return InlineKeyboardMarkup(
         [
@@ -16,18 +17,30 @@ def autoplay_markup():
                 InlineKeyboardButton("⚡ ᴅɪꜱᴀʙʟᴇ", callback_data="autoplay_off"),
             ],
             [
-                InlineKeyboardButton("🔄 ʀᴇꜰʀᴇꜱʜ", callback_data="autoplay_refresh")
+                InlineKeyboardButton("🔄 ʀᴇꜰʀᴇꜱʜ", callback_data="autoplay_refresh"),
+                InlineKeyboardButton("✖ ᴄʟᴏꜱᴇ", callback_data="autoplay_close"),
             ]
         ]
     )
 
 
+# ⏳ Auto Delete Function (non-blocking)
+async def delete_later(msg):
+    await asyncio.sleep(20)
+    try:
+        await msg.delete()
+    except:
+        pass
+
+
+# 🎛 Command Handler
 @app.on_message(filters.command(["autoplay", "cautoplay"]) & filters.group & ~BANNED_USERS)
 @AdminActual
 async def autoplay_control(_, message: Message, strings):
 
     command = message.command[0].lower()
 
+    # Channel mode check
     if command.startswith("c"):
         chat_id = await get_cmode(message.chat.id)
         if chat_id is None:
@@ -41,12 +54,15 @@ async def autoplay_control(_, message: Message, strings):
 
     status = "✨ ᴇɴᴀʙʟᴇᴅ" if await get_autoplay(chat_id) else "⚡ ᴅɪꜱᴀʙʟᴇᴅ"
 
-    await message.reply_text(
+    msg = await message.reply_text(
         f"🎛 **ᴀᴜᴛᴏᴘʟᴀʏ ᴄᴏɴᴛʀᴏʟ ᴘᴀɴᴇʟ**\n\n"
         f"➻ ꜱᴛᴀᴛᴜꜱ : {status}\n\n"
         f"⟢ ᴜꜱᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴᴛʀᴏʟ",
         reply_markup=autoplay_markup()
     )
+
+    # 🔥 Auto delete after 20 sec (non-blocking)
+    asyncio.create_task(delete_later(msg))
 
 
 # 🔘 Button Handler
@@ -58,20 +74,15 @@ async def autoplay_buttons(client, callback_query):
 
     if data == "autoplay_on":
         await set_autoplay(chat_id, True)
-        text = "✨ ᴀᴜᴛᴏᴘʟᴀʏ ᴇɴᴀʙʟᴇᴅ"
 
     elif data == "autoplay_off":
         await set_autoplay(chat_id, False)
-        text = "⚡ ᴀᴜᴛᴏᴘʟᴀʏ ᴅɪꜱᴀʙʟᴇᴅ"
 
     elif data == "autoplay_refresh":
-        status = "✨ ᴇɴᴀʙʟᴇᴅ" if await get_autoplay(chat_id) else "⚡ ᴅɪꜱᴀʙʟᴇᴅ"
-        return await callback_query.message.edit_text(
-            f"🎛 **ᴀᴜᴛᴏᴘʟᴀʏ ᴄᴏɴᴛʀᴏʟ ᴘᴀɴᴇʟ**\n\n"
-            f"➻ ꜱᴛᴀᴛᴜꜱ : {status}\n\n"
-            f"⟢ ᴜꜱᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴᴛʀᴏʟ",
-            reply_markup=autoplay_markup()
-        )
+        pass
+
+    elif data == "autoplay_close":
+        return await callback_query.message.delete()
 
     else:
         return
@@ -80,9 +91,12 @@ async def autoplay_buttons(client, callback_query):
 
     status = "✨ ᴇɴᴀʙʟᴇᴅ" if await get_autoplay(chat_id) else "⚡ ᴅɪꜱᴀʙʟᴇᴅ"
 
-    await callback_query.message.edit_text(
+    msg = await callback_query.message.edit_text(
         f"🎛 **ᴀᴜᴛᴏᴘʟᴀʏ ᴄᴏɴᴛʀᴏʟ ᴘᴀɴᴇʟ**\n\n"
         f"➻ ꜱᴛᴀᴛᴜꜱ : {status}\n\n"
         f"⟢ ᴜꜱᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴᴛʀᴏʟ",
         reply_markup=autoplay_markup()
     )
+
+    # 🔥 Auto delete after 20 sec again
+    asyncio.create_task(delete_later(msg))
