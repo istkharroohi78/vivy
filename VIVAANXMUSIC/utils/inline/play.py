@@ -56,10 +56,10 @@ def stream_markup_timer(_, chat_id, played, dur):
 
         # 🔥 Seek + Autoplay Row
         [
-            InlineKeyboardButton("⟨ 𝟸𝟶ˢ", callback_data=f"seekback|{chat_id}"),
-            InlineKeyboardButton("🔁", callback_data=f"loop|{chat_id}"),
-            InlineKeyboardButton("🔄", callback_data="autoplay_toggle"),
-            InlineKeyboardButton("𝟸𝟶ˢ ⟩", callback_data=f"seekforward|{chat_id}"),
+                         InlineKeyboardButton(text="< - 𝟤𝟢 s", callback_data="seek_backward_20"),
+             InlineKeyboardButton(text="ᴘʀᴏᴍᴏ", url=f"https://t.me/KavyaBots"),
+             InlineKeyboardButton(text="𝟤𝟢 s + >", callback_data="seek_forward_20")
+                   
         ],
 
         # 🎯 Bottom Buttons
@@ -88,11 +88,9 @@ def stream_markup(_, chat_id):
             InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
-            InlineKeyboardButton("⟨ 𝟸𝟶ˢ", callback_data=f"seekback|{chat_id}"),
-            InlineKeyboardButton("🔁", callback_data=f"loop|{chat_id}"),
-            InlineKeyboardButton("🔄", callback_data="autoplay_toggle"),
-            InlineKeyboardButton("𝟸𝟶ˢ ⟩", callback_data=f"seekforward|{chat_id}"),
-        ],
+                         InlineKeyboardButton(text="< - 𝟤𝟢 s", callback_data="seek_backward_20"),
+             InlineKeyboardButton(text="ᴘʀᴏᴍᴏ", url=f"https://t.me/KavyaBots"),
+             InlineKeyboardButton(text="𝟤𝟢 s + >", callback_data="seek_forward_20")        ],
         [
             InlineKeyboardButton(
                 "✚ ᴀᴅᴅ ᴍᴇ ✚",
