@@ -57,7 +57,7 @@ class BUTTONS(object):
         [
             InlineKeyboardButton("˹ ʀєᴘσ ˼", callback_data="gib_source"),
             InlineKeyboardButton("˹ ʏᴛ-ᴀᴘɪ ˼", callback_data="bot_info_data"),
-            InlineKeyboardButton("˹ ʟᴧηɢᴜᴧɢє ˼", callback_data="LG"),
+            #InlineKeyboardButton("˹ ʟᴧηɢᴜᴧɢє ˼", callback_data="LG"),#
         ],
         [
                     InlineKeyboardButton("• ʙᴧᴄᴋ •", callback_data="settingsback_helper"),
@@ -81,10 +81,17 @@ async def helper_private(client: app, update: Union[types.Message, types.Callbac
         _ = get_string(language)
         keyboard = help_pannel(_, True)
 
+        help_text = (
+            _.get("help_1")
+            or _.get("Help_1")
+            or "❖ Help Menu ❖"
+        )
+
         await update.edit_message_text(
-            _["help_1"].format(SUPPORT_CHAT),
+            help_text.format(SUPPORT_CHAT),
             reply_markup=keyboard
         )
+
     else:
         try:
             await update.delete()
@@ -95,10 +102,16 @@ async def helper_private(client: app, update: Union[types.Message, types.Callbac
         _ = get_string(language)
         keyboard = help_pannel(_)
 
+        help_text = (
+            _.get("help_1")
+            or _.get("Help_1")
+            or "❖ Help Menu ❖"
+        )
+
         await update.reply_photo(
             random.choice(START_IMG),
             has_spoiler=True,
-            caption=_["help_1"].format(SUPPORT_CHAT),
+            caption=help_text.format(SUPPORT_CHAT),
             reply_markup=keyboard,
         )
 
@@ -107,19 +120,17 @@ async def helper_private(client: app, update: Union[types.Message, types.Callbac
 @LanguageStart
 async def help_com_group(client, message: Message, _):
     keyboard = private_help_panel(_)
-    await message.reply_text(_["help_2"], reply_markup=InlineKeyboardMarkup(keyboard))
 
-
-@app.on_callback_query(filters.regex("abot_cb") & ~BANNED_USERS)
-async def about_cb(client, CallbackQuery):
-    bot = await client.get_me()
-    bot_mention = bot.mention
-
-    await CallbackQuery.edit_message_text(
-        helpers.HELP_ABOUT.format(bot_mention),
-        reply_markup=InlineKeyboardMarkup(BUTTONS.INFO_BUTTON),
+    help_text = (
+        _.get("help_2")
+        or _.get("Help_2")
+        or "Click the button below to open help menu."
     )
 
+    await message.reply_text(
+        help_text,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 @app.on_callback_query(filters.regex("sbot_cb") & ~BANNED_USERS)
 async def support_cb(client, CallbackQuery):
