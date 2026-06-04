@@ -109,6 +109,28 @@ def stream_markup(_, chat_id):
     ]
 
 
+# ❖ AUTOPLAY PANEL BUTTONS ❖
+def autoplay_markup(chat_id):
+    return [
+        [
+            InlineKeyboardButton(
+                text="✨ ᴇɴᴀʙʟᴇ",
+                callback_data=f"ADMIN AutoOn|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                text="⚡ ᴅɪsᴀʙʟᴇ",
+                callback_data=f"ADMIN AutoOff|{chat_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="🔙 ʙᴀᴄᴋ ᴛᴏ ᴘʟᴀʏᴇʀ",
+                callback_data=f"ADMIN AutoRefresh|{chat_id}",
+            )
+        ]
+    ]
+
+
 # 🎶 PLAYLIST
 def playlist_markup(_, videoid, user_id, ptype, channel, fplay):
     return [
