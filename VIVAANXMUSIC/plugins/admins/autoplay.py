@@ -7,6 +7,7 @@ from pyrogram.types import (
     InlineKeyboardButton,
     CallbackQuery,
 )
+from pyrogram.errors import MessageNotModified
 
 from VIVAANXMUSIC import app
 from VIVAANXMUSIC.utils.database import (
@@ -194,7 +195,13 @@ async def autoplay_buttons(client, callback_query: CallbackQuery):
 
     text = await panel_text(chat_id, chat_title)
 
-    await callback_query.message.edit_text(
-        text=text,
-        reply_markup=autoplay_markup(),
-    )
+    try:
+        await callback_query.message.edit_text(
+            text=text,
+            reply_markup=autoplay_markup(),
+        )
+    except MessageNotModified:
+        # Ignore error if content is the same
+        pass
+    except Exception as e:
+        print(f"Autoplay panel error: {e}")
