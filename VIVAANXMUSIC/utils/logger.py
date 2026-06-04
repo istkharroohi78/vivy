@@ -28,15 +28,13 @@ async def play_logs(message, streamtype):
                 pass
 
         logger_text = f"""
-<blockquote>
-🎵 <b>PLAY LOG</b>
+<blockquote>🎵 <b>PLAY LOG</b>
 
 • <b>Request By :</b> {message.from_user.mention}
 • <b>Query :</b> {query}
 • <b>Chat :</b> {message.chat.title}
 • <b>Chat ID :</b> <code>{message.chat.id}</code>
-• <b>Members :</b> {members_count}
-</blockquote>
+• <b>Members :</b> {members_count}</blockquote>
 """
 
         reply_markup = None
@@ -78,14 +76,12 @@ async def bot_removed_logs(client, message, is_clone=False):
             chat_link = f"https://t.me/{message.chat.username}"
 
         remove_log_text = f"""
-<blockquote>
-⚠️ <b>BOT REMOVED</b>
+<blockquote>⚠️ <b>BOT REMOVED</b>
 
 • <b>Removed By :</b> {kicked_by}
 • <b>Chat :</b> {message.chat.title}
 • <b>Chat ID :</b> <code>{message.chat.id}</code>
-• <b>Members :</b> {members_count}
-</blockquote>
+• <b>Members :</b> {members_count}</blockquote>
 """
 
         reply_markup = None
@@ -146,16 +142,14 @@ async def autoplay_log(client, chat_id, query):
             pass
 
     logger_text = f"""
-<blockquote>
-🔄 <b>AUTOPLAY LOG</b>
+<blockquote>🔄 <b>AUTOPLAY LOG</b>
 
 • <b>Track :</b> {query}
 • <b>Triggered By :</b> Autoplay System
 • <b>Chat :</b> {chat_title}
 • <b>Chat ID :</b> <code>{chat_id}</code>
 • <b>Owner :</b> {owner_name}
-• <b>Members :</b> {members_count}
-</blockquote>
+• <b>Members :</b> {members_count}</blockquote>
 """
 
     reply_markup = None
