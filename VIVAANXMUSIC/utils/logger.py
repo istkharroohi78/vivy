@@ -1,8 +1,8 @@
 from pyrogram.enums import ParseMode
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from PritiMusic import app
-from PritiMusic.utils.database import is_on_off
+from VIVAANXMUSIC import app
+from VIVAANXMUSIC.utils.database import is_on_off
 from config import LOGGER_ID
 
 
