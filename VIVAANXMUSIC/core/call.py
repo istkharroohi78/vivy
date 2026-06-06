@@ -1,6 +1,7 @@
 import asyncio
 import os
 import time
+import random
 from datetime import datetime, timedelta
 from typing import Union
 
@@ -553,47 +554,158 @@ class Call:
         if queued_file.startswith("live_") or queued_file == "index_url":
             return False
 
-        videoid = str(finished_track.get("vidid") or "")
-        if not videoid or videoid in {"telegram", "soundcloud"}:
+        last_vidid = str(finished_track.get("vidid") or "")
+        if not last_vidid or last_vidid in {"telegram", "soundcloud"}:
             return False
 
+        raw_title = finished_track.get("title", "Unknown Title")
+        title_lower = str(raw_title).lower()
+
+        # ==========================================
+        # 🟢 PHASE 1: SMART RANDOMIZED AUTOPLAY
+        # ==========================================
+        lang_pools = {
+            "Hindi": ["hindi single track official video", "bollywood latest lyrical song", "latest hindi chill track"],
+            "Punjabi": ["latest punjabi single official video", "punjabi trending track lyrical", "punjabi pop blast"],
+            "Bhojpuri": ["bhojpuri latest single video song", "bhojpuri trending song official", "hit bhojpuri track"],
+            "Haryanvi": ["haryanvi single track official", "latest haryanvi video song", "haryanvi dj mix"],
+            "Tamil": ["tamil latest single official video", "kollywood trending song lyrical"],
+            "Telugu": ["telugu tollywood latest single song", "telugu lyrical video official"],
+            "English": ["english pop single official music video", "trending english lyrical song", "global top 50 pop hit"]
+        }
+        keywords_map = {
+            "Punjabi": ["punjabi", "jass", "sidhu", "karan", "diljit", "amrit", "ap dhillon"],
+            "Bhojpuri": ["bhojpuri", "khesari", "pawan", "shilpi", "antra"],
+            "Haryanvi": ["haryanvi", "sapna", "renuka", "gulzaar"],
+            "Tamil": ["tamil", "anirudh", "rahman", "kollywood"],
+            "Telugu": ["telugu", "allu", "ramarao", "tollywood", "dsp"],
+            "English": ["english", "pop song", "taylor swift", "justin bieber", "weekend"]
+        }
+        
+        detected_lang = "Hindi" 
+        for lang, kws in keywords_map.items():
+            if any(kw in title_lower for kw in kws):
+                detected_lang = lang
+                break
+
+        search_query = random.choice(lang_pools[detected_lang])
+        valid_choices = []
+
+        try:
+            from youtubesearchpython.__future__ import VideosSearch
+            search = VideosSearch(search_query, limit=15)
+            result = await search.next()
+            if result and result.get("result"):
+                for res in result["result"]:
+                    vidid = str(res.get("id") or "")
+                    if not vidid or vidid == "None" or vidid == last_vidid:
+                        continue
+                    
+                    next_dur = str(res.get("duration") or "0:00")
+                    dur_sec = 0
+                    if next_dur and ":" in next_dur:
+                        parts = next_dur.split(":")
+                        try:
+                            if len(parts) == 2: 
+                                dur_sec = int(parts[0]) * 60 + int(parts[1])
+                            elif len(parts) == 3: 
+                                dur_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                        except ValueError:
+                            pass
+                    
+                    if 30 <= dur_sec <= 900:
+                        valid_choices.append({
+                            "vidid": vidid,
+                            "title": str(res.get("title") or "Unknown Title").title(),
+                            "dur": next_dur,
+                            "seconds": dur_sec
+                        })
+        except Exception as e:
+            LOGGER(__name__).warning(f"Smart Search API failed: {e}")
+
+        if not valid_choices:
+            try:
+                import yt_dlp
+                loop_e = asyncio.get_event_loop()
+                ytdl_opts = {"quiet": True, "extract_flat": True}
+                ydl = yt_dlp.YoutubeDL(ytdl_opts)
+                r = await loop_e.run_in_executor(None, lambda: ydl.extract_info(f"ytsearch10:{search_query}", download=False))
+                
+                if r and "entries" in r:
+                    for entry in r["entries"]:
+                        vidid = entry.get("id")
+                        if not vidid or vidid == last_vidid: 
+                            continue
+                        
+                        raw_dur = entry.get("duration", 0)
+                        try:
+                            dur_sec = int(float(raw_dur)) if raw_dur else 0
+                        except (ValueError, TypeError):
+                            dur_sec = 0
+                            
+                        if not dur_sec or dur_sec < 30 or dur_sec > 900: 
+                            continue
+                        
+                        m, s = divmod(dur_sec, 60)
+                        h, m = divmod(m, 60)
+                        dur_str = f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+                        
+                        valid_choices.append({
+                            "vidid": vidid,
+                            "title": str(entry.get("title", "Unknown Title")).title(),
+                            "dur": dur_str,
+                            "seconds": dur_sec
+                        })
+            except Exception as e:
+                 LOGGER(__name__).warning(f"yt-dlp fallback failed: {e}")
+
+        if valid_choices:
+            chosen = random.choice(valid_choices)
+            db.setdefault(chat_id, []).append({
+                "title": chosen["title"],
+                "dur": chosen["dur"],
+                "streamtype": finished_track.get("streamtype", "audio"),
+                "by": "Autoplay 🟢",
+                "user_id": 0,
+                "chat_id": finished_track.get("chat_id", chat_id),
+                "file": f"vid_{chosen['vidid']}",
+                "vidid": chosen["vidid"],
+                "seconds": chosen["seconds"],
+                "played": 0,
+            })
+            return True
+
+        # ==========================================
+        # 🟠 PHASE 2: NATIVE YOUTUBE API FALLBACK
+        # ==========================================
         seed_seconds = int(finished_track.get("seconds") or 0)
-        max_duration = None
-        if seed_seconds > 0:
-            max_duration = min(max(seed_seconds * 3, 240), 900)
+        max_duration = min(max(seed_seconds * 3, 240), 900) if seed_seconds > 0 else 900
 
         try:
             recommendation = await YouTube.autoplay(
-                videoid,
-                finished_track.get("title", ""),
+                last_vidid,
+                raw_title,
                 max_duration=max_duration,
             )
         except Exception as err:
-            LOGGER(__name__).warning(
-                "Autoplay lookup failed for chat %s on %s: %s",
-                chat_id,
-                videoid,
-                err,
-            )
+            LOGGER(__name__).warning("Autoplay lookup failed for chat %s on %s: %s", chat_id, last_vidid, err)
             return False
 
         if not recommendation:
             return False
 
-        db.setdefault(chat_id, []).append(
-            {
-                "title": recommendation["title"].title(),
-                "dur": recommendation["duration_min"],
-                "streamtype": finished_track.get("streamtype", "audio"),
-                "by": "Autoplay",
-                "user_id": 0,
-                "chat_id": finished_track.get("chat_id", chat_id),
-                "file": f"vid_{recommendation['vidid']}",
-                "vidid": recommendation["vidid"],
-                "seconds": recommendation["duration_sec"],
-                "played": 0,
-            }
-        )
+        db.setdefault(chat_id, []).append({
+            "title": recommendation["title"].title(),
+            "dur": recommendation["duration_min"],
+            "streamtype": finished_track.get("streamtype", "audio"),
+            "by": "Autoplay",
+            "user_id": 0,
+            "chat_id": finished_track.get("chat_id", chat_id),
+            "file": f"vid_{recommendation['vidid']}",
+            "vidid": recommendation["vidid"],
+            "seconds": recommendation["duration_sec"],
+            "played": 0,
+        })
         return True
 
 
