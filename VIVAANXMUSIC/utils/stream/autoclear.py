@@ -3,7 +3,7 @@ import time
 import asyncio
 import config
 from config import autoclean
-from PritiMusic import LOGGER, app
+from VIVAANXMUSIC import LOGGER, app
 
 # Settings
 WEEK_IN_SECONDS = 7 * 24 * 60 * 60
