@@ -43,8 +43,26 @@ OCR_SPACE_API_KEY = getenv("OCR_SPACE_API_KEY", "helloworld")
 
 # ======================================================
 # 🎵 Music API
+# ✅ JioSaavn Working API Added Here
+JIOSAAVN_API = getenv("JIOSAAVN_API", "https://saavn.me/search/songs?query=")
+
+# ----------------- API RACING CONFIGURATION -----------------
+# 1. Shruti API
+API_URL = getenv("API_URL", "https://api.shrutibots.site")
+API_KEY = getenv("API_KEY", "ShrutiBotsC0WH1GowF2HkGoKv4F3y")
+
+# 2. Xbit API
 YTPROXY_URL = getenv("YTPROXY_URL", "https://tgapi.xbitcode.com")
-YT_API_KEY = getenv("YT_API_KEY", "xbit_gzlb5IbFpZZ_nIFsU7kDuM0-IokPM6Db")
+YT_API_KEY = getenv("YT_API_KEY" , "xbit_B4TNnBAoe6uoSM7NLFz-dk6X7GibJ6Bh")
+
+# 3. Worker API
+WORKER_FALLBACK_API_URL = getenv("WORKER_FALLBACK_API_URL", "https://youtubenewapi.skybotsdeveloper.workers.dev")
+WORKER_FALLBACK_API_KEY = getenv("WORKER_FALLBACK_API_KEY", "itsmesid")
+
+# 4. Inflex API
+INFLEX_API_URL = getenv("INFLEX_API_URL", "https://teaminflex.xyz")
+INFLEX_API_KEY = getenv("INFLEX_API_KEY", "INFLEX40920628D")
+
 
 # ======================================================
 # 🎧 Limits
