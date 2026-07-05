@@ -46,4 +46,4 @@ unidecode
 wget
 yt-dlp==2025.10.14
 git+https://github.com/SkyBotsDeveloper/youtube-search-python.git
-youtube-search-python==1.6.6 
+youtube-search-python
