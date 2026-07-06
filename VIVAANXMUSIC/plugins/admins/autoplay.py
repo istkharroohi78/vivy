@@ -1,6 +1,8 @@
 import asyncio
+import random
 
 from pyrogram import filters
+from pyrogram.enums import ButtonStyle
 from pyrogram.types import (
     Message,
     InlineKeyboardMarkup,
@@ -19,25 +21,36 @@ from VIVAANXMUSIC.utils.decorators.admins import AdminActual
 from config import BANNED_USERS
 
 
+# 🎨 Dynamic Color Generator
+def get_style_map():
+    styles = [ButtonStyle.PRIMARY, ButtonStyle.SUCCESS, ButtonStyle.DANGER]
+    random.shuffle(styles)
+    return {1: styles[0], 2: styles[1], 3: styles[2], 4: styles[0]}
+
+
 #━━━━━━━━━━━ PANEL BUTTONS ━━━━━━━━━━━#
 
 def autoplay_markup():
+    sm = get_style_map()
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
                     "✨ ᴇɴᴀʙʟᴇ",
                     callback_data="autoplay_on",
+                    style=sm[1]
                 ),
                 InlineKeyboardButton(
                     "⚡ ᴅɪsᴀʙʟᴇ",
                     callback_data="autoplay_off",
+                    style=sm[2]
                 ),
             ],
             [
                 InlineKeyboardButton(
                     "🔄 ʀᴇғʀᴇsʜ",
                     callback_data="autoplay_refresh",
+                    style=sm[3]
                 )
             ]
         ]
