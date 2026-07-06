@@ -2,6 +2,8 @@ import asyncio
 import math
 import os
 import re
+import traceback
+import logging
 from functools import lru_cache
 import aiofiles
 import aiohttp
@@ -14,6 +16,13 @@ from VIVAANXMUSIC import app
 from config import BOT_NAME, YOUTUBE_IMG_URL
 from VIVAANXMUSIC.core.dir import CACHE_DIR
 
+LOGGER = logging.getLogger(__name__)
+
+# 🟢 PILLOW COMPATIBILITY FIX
+try:
+    LANCZOS = Image.Resampling.LANCZOS
+except AttributeError:
+    LANCZOS = Image.LANCZOS
 
 # Font paths
 TITLE_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font2.ttf"
@@ -32,12 +41,11 @@ NOW_PLAYING_BOX = (58, 58, 220, 104)
 
 
 def fit_cover(image, width: int, height: int):
-    """Resize and crop image to fill the target area."""
     src = image.convert("RGBA")
     ratio = max(width / src.size[0], height / src.size[1])
     resized = src.resize(
         (int(src.size[0] * ratio), int(src.size[1] * ratio)),
-        Image.LANCZOS,
+        LANCZOS,
     )
     left = max((resized.size[0] - width) // 2, 0)
     top = max((resized.size[1] - height) // 2, 0)
@@ -47,7 +55,7 @@ def fit_cover(image, width: int, height: int):
 def antialiased_circle_mask(size: int, scale: int = 4):
     mask = Image.new("L", (size * scale, size * scale), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, size * scale, size * scale), fill=255)
-    return mask.resize((size, size), Image.LANCZOS)
+    return mask.resize((size, size), LANCZOS)
 
 
 def antialiased_rounded_mask(size: int, radius: int, scale: int = 4):
@@ -57,7 +65,7 @@ def antialiased_rounded_mask(size: int, radius: int, scale: int = 4):
         radius=radius * scale,
         fill=255,
     )
-    return mask.resize((size, size), Image.LANCZOS)
+    return mask.resize((size, size), LANCZOS)
 
 
 def masked_circle(image, size: int, border_width: int = 6, border_color=(255, 255, 255, 240)):
@@ -117,7 +125,6 @@ def resolve_brand_name() -> str:
 
 @lru_cache(maxsize=16)
 def load_font(path, size: int):
-    """Load font with fallback to default."""
     try:
         return ImageFont.truetype(path, size)
     except Exception:
@@ -164,32 +171,21 @@ def wrap_text(draw, text: str, font, max_width: int, max_lines: int = 3) -> list
         if len(lines) == max_lines - 1:
             break
 
-    remaining = " ".join(words[index:]).strip()
-    last_line = current if current else remaining
-    if remaining and current and current != remaining:
-        last_line = f"{current} {remaining}".strip()
-    if text_width(draw, last_line, font) > max_width:
-        while last_line and text_width(draw, f"{last_line}...", font) > max_width:
-            last_line = last_line[:-1].rstrip()
-        last_line = f"{last_line}..." if last_line else "..."
+        remaining = " ".join(words[index:]).strip()
+        last_line = current if current else remaining
+        if remaining and current and current != remaining:
+            last_line = f"{current} {remaining}".strip()
+        if text_width(draw, last_line, font) > max_width:
+            while last_line and text_width(draw, f"{last_line}...", font) > max_width:
+                last_line = last_line[:-1].rstrip()
+            last_line = f"{last_line}..." if last_line else "..."
 
-    if last_line:
-        lines.append(last_line)
+        if last_line:
+            lines.append(last_line)
     return lines[:max_lines]
 
 
-def draw_waveform(
-    draw,
-    x_start,
-    y,
-    width,
-    height,
-    accent_color,
-    base_color,
-    progress_ratio=0.37,
-    segments=72,
-):
-    """Draw a centered, peaked waveform above the playback line."""
+def draw_waveform(draw, x_start, y, width, height, accent_color, base_color, progress_ratio=0.37, segments=72):
     segment_width = width / max(segments - 1, 1)
     active_x = x_start + (width * progress_ratio)
     accent_rgb = accent_color[:3]
@@ -205,17 +201,9 @@ def draw_waveform(
         color = (*blend_rgb(base_rgb, accent_rgb, strength), int(70 + (185 * strength)))
 
         if bar_height <= 4:
-            draw.ellipse(
-                [(center_x - 1.5, y - 1.5), (center_x + 1.5, y + 1.5)],
-                fill=color,
-            )
+            draw.ellipse([(center_x - 1.5, y - 1.5), (center_x + 1.5, y + 1.5)], fill=color)
             continue
-
-        draw.rounded_rectangle(
-            [(center_x - 1.5, y - bar_height), (center_x + 1.5, y)],
-            radius=2,
-            fill=color,
-        )
+        draw.rounded_rectangle([(center_x - 1.5, y - bar_height), (center_x + 1.5, y)], radius=2, fill=color)
 
 
 def draw_transport_controls(draw, center_x: int, center_y: int, accent_color):
@@ -225,68 +213,27 @@ def draw_transport_controls(draw, center_x: int, center_y: int, accent_color):
     inner_fill = (*blend_rgb((18, 24, 34), accent_color[:3], 0.18), 235)
     icon_color = (242, 245, 249, 230)
 
-    positions = (
-        (center_x - 52, 16, "prev"),
-        (center_x, 18, "pause"),
-        (center_x + 52, 16, "next"),
-    )
+    positions = ((center_x - 52, 16, "prev"), (center_x, 18, "pause"), (center_x + 52, 16, "next"))
 
     for x, radius, icon in positions:
         outline = center_ring if icon == "pause" else ring_color
-        draw.ellipse(
-            [(x - radius, center_y - radius), (x + radius, center_y + radius)],
-            fill=fill_color,
-            outline=outline,
-            width=2,
-        )
-        draw.ellipse(
-            [(x - radius + 3, center_y - radius + 3), (x + radius - 3, center_y + radius - 3)],
-            fill=inner_fill,
-        )
+        draw.ellipse([(x - radius, center_y - radius), (x + radius, center_y + radius)], fill=fill_color, outline=outline, width=2)
+        draw.ellipse([(x - radius + 3, center_y - radius + 3), (x + radius - 3, center_y + radius - 3)], fill=inner_fill)
 
         if icon == "pause":
-            draw.rounded_rectangle(
-                [(x - 6, center_y - 8), (x - 2, center_y + 8)],
-                radius=2,
-                fill=icon_color,
-            )
-            draw.rounded_rectangle(
-                [(x + 2, center_y - 8), (x + 6, center_y + 8)],
-                radius=2,
-                fill=icon_color,
-            )
+            draw.rounded_rectangle([(x - 6, center_y - 8), (x - 2, center_y + 8)], radius=2, fill=icon_color)
+            draw.rounded_rectangle([(x + 2, center_y - 8), (x + 6, center_y + 8)], radius=2, fill=icon_color)
         elif icon == "prev":
-            draw.polygon(
-                [(x + 6, center_y - 8), (x - 2, center_y), (x + 6, center_y + 8)],
-                fill=icon_color,
-            )
-            draw.polygon(
-                [(x - 2, center_y - 8), (x - 10, center_y), (x - 2, center_y + 8)],
-                fill=icon_color,
-            )
-            draw.rounded_rectangle(
-                [(x + 8, center_y - 9), (x + 10, center_y + 9)],
-                radius=1,
-                fill=icon_color,
-            )
+            draw.polygon([(x + 6, center_y - 8), (x - 2, center_y), (x + 6, center_y + 8)], fill=icon_color)
+            draw.polygon([(x - 2, center_y - 8), (x - 10, center_y), (x - 2, center_y + 8)], fill=icon_color)
+            draw.rounded_rectangle([(x + 8, center_y - 9), (x + 10, center_y + 9)], radius=1, fill=icon_color)
         else:
-            draw.polygon(
-                [(x - 6, center_y - 8), (x + 2, center_y), (x - 6, center_y + 8)],
-                fill=icon_color,
-            )
-            draw.polygon(
-                [(x + 2, center_y - 8), (x + 10, center_y), (x + 2, center_y + 8)],
-                fill=icon_color,
-            )
-            draw.rounded_rectangle(
-                [(x - 10, center_y - 9), (x - 8, center_y + 9)],
-                radius=1,
-                fill=icon_color,
-            )
+            draw.polygon([(x - 6, center_y - 8), (x + 2, center_y), (x - 6, center_y + 8)], fill=icon_color)
+            draw.polygon([(x + 2, center_y - 8), (x + 10, center_y), (x + 2, center_y + 8)], fill=icon_color)
+            draw.rounded_rectangle([(x - 10, center_y - 9), (x - 8, center_y + 9)], radius=1, fill=icon_color)
 
 
 def draw_text_with_outline(draw, position, text, font, fill_color, outline_color, outline_width=2):
-    """Draw text with outline effect for better visibility."""
     x, y = position
     for adj_x in range(-outline_width, outline_width + 1):
         for adj_y in range(-outline_width, outline_width + 1):
@@ -302,27 +249,32 @@ def add_glow(base, box, color, blur_radius=70):
     return Image.alpha_composite(base, glow)
 
 
-def draw_glass_panel(
-    base,
-    box,
-    radius=34,
-    fill=(18, 28, 40, 122),
-    border=(255, 255, 255, 68),
-    blur_radius=18,
-    show_top_line=True,
-    show_bottom_line=True,
-):
+# 🟢 NEON GLOW WATERMARK FUNCTION
+def draw_glowing_text(base_image, position, text, font, fill_color, glow_color, blur_radius=6):
+    """Draws custom neon-glowing text onto the base image"""
+    glow_layer = Image.new("RGBA", base_image.size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow_layer)
+    glow_draw.text(position, text, font=font, fill=glow_color)
+    
+    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(blur_radius))
+    
+    # Layering twice to make the neon glow intensely pop
+    base_image = Image.alpha_composite(base_image, glow_layer)
+    base_image = Image.alpha_composite(base_image, glow_layer)
+    
+    # Crisp white text layer over the blurred glow
+    ImageDraw.Draw(base_image).text(position, text, font=font, fill=fill_color)
+    return base_image
+
+
+def draw_glass_panel(base, box, radius=34, fill=(18, 28, 40, 122), border=(255, 255, 255, 68), blur_radius=18, show_top_line=True, show_bottom_line=True):
     x1, y1, x2, y2 = [int(value) for value in box]
     width = x2 - x1
     height = y2 - y1
 
     shadow = Image.new("RGBA", base.size, (0, 0, 0, 0))
     shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.rounded_rectangle(
-        (x1 + 10, y1 + 14, x2 + 10, y2 + 14),
-        radius=radius,
-        fill=(0, 0, 0, 72),
-    )
+    shadow_draw.rounded_rectangle((x1 + 10, y1 + 14, x2 + 10, y2 + 14), radius=radius, fill=(0, 0, 0, 72))
     shadow = shadow.filter(ImageFilter.GaussianBlur(22))
     base = Image.alpha_composite(base, shadow)
 
@@ -335,37 +287,15 @@ def draw_glass_panel(
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     overlay_draw = ImageDraw.Draw(overlay)
     overlay_draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=fill)
-    overlay_draw.rounded_rectangle(
-        (0, 0, width - 1, height - 1),
-        radius=radius,
-        outline=border,
-        width=2,
-    )
+    overlay_draw.rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, outline=border, width=2)
+    
     if show_top_line:
-        overlay_draw.line(
-            [(26, 24), (width - 28, 24)],
-            fill=(255, 255, 255, 50),
-            width=2,
-        )
+        overlay_draw.line([(26, 24), (width - 28, 24)], fill=(255, 255, 255, 50), width=2)
     if show_bottom_line:
-        overlay_draw.line(
-            [(24, height - 26), (width - 24, height - 46)],
-            fill=(255, 255, 255, 20),
-            width=1,
-        )
+        overlay_draw.line([(24, height - 26), (width - 24, height - 46)], fill=(255, 255, 255, 20), width=1)
+        
     base.alpha_composite(overlay, (x1, y1))
     return base
-
-
-def draw_chip(draw, box, label, value, label_font, value_font, accent_color):
-    x1, y1, x2, y2 = box
-    draw.text((x1 + 18, y1 + 14), label.upper(), fill=(196, 211, 223), font=label_font)
-    draw.text((x1 + 18, y1 + 42), value, fill=(255, 255, 255), font=value_font)
-    draw.rounded_rectangle(
-        (x1, y1, x1 + 8, y2),
-        radius=4,
-        fill=accent_color,
-    )
 
 
 def accent_palette(image):
@@ -380,7 +310,7 @@ def accent_palette(image):
 
 
 async def get_thumb(videoid, user_id=None):
-    """Generate an enhanced glassmorphic playback thumbnail."""
+    os.makedirs(CACHE_DIR, exist_ok=True)
     cache_user_id = user_id if user_id is not None else "blank"
     cache_path = os.path.join(CACHE_DIR, f"{videoid}_{cache_user_id}_elite_glass_v23.png")
     if os.path.isfile(cache_path):
@@ -390,6 +320,7 @@ async def get_thumb(videoid, user_id=None):
     temp_thumb_path = os.path.join(CACHE_DIR, f"thumb_{videoid}_glass.png")
     fallback_avatar_path = os.path.join(CACHE_DIR, "elite_avatar_fallback.jpg")
     sp = None
+    
     try:
         results = VideosSearch(url, limit=1)
         results_data = (await results.next()).get("result", [])
@@ -423,7 +354,8 @@ async def get_thumb(videoid, user_id=None):
                 async for photo in app.get_chat_photos(user_id, 1):
                     sp = await app.download_media(photo.file_id, file_name=f"{user_id}.jpg")
                     break
-            except Exception:
+            except Exception as e:
+                LOGGER.warning(f"Failed to fetch user photo: {e}")
                 sp = None
 
         if sp:
@@ -431,11 +363,7 @@ async def get_thumb(videoid, user_id=None):
         else:
             if not os.path.isfile(fallback_avatar_path):
                 try:
-                    await asyncio.to_thread(
-                        cache_remote_file,
-                        FALLBACK_AVATAR_URL,
-                        fallback_avatar_path,
-                    )
+                    await asyncio.to_thread(cache_remote_file, FALLBACK_AVATAR_URL, fallback_avatar_path)
                 except Exception:
                     pass
 
@@ -468,56 +396,15 @@ async def get_thumb(videoid, user_id=None):
         background = add_glow(background, (-120, 450, 340, 900), accent_wash, blur_radius=120)
         background = add_glow(background, (900, -80, 1310, 280), accent_glow, blur_radius=100)
 
-        background = draw_glass_panel(
-            background,
-            ART_CARD_BOX,
-            radius=40,
-            fill=(17, 26, 37, 92),
-            border=(255, 255, 255, 62),
-            blur_radius=18,
-            show_top_line=False,
-            show_bottom_line=False,
-        )
-        background = draw_glass_panel(
-            background,
-            PLAYBACK_BOX,
-            radius=28,
-            fill=(15, 23, 34, 92),
-            border=(255, 255, 255, 56),
-            blur_radius=15,
-            show_top_line=False,
-            show_bottom_line=False,
-        )
-        background = draw_glass_panel(
-            background,
-            BRAND_BOX,
-            radius=24,
-            fill=(22, 31, 43, 94),
-            border=(255, 255, 255, 54),
-            blur_radius=12,
-            show_top_line=False,
-            show_bottom_line=False,
-        )
-        background = draw_glass_panel(
-            background,
-            NOW_PLAYING_BOX,
-            radius=22,
-            fill=(22, 31, 43, 96),
-            border=(255, 255, 255, 54),
-            blur_radius=12,
-            show_top_line=False,
-            show_bottom_line=False,
-        )
+        background = draw_glass_panel(background, ART_CARD_BOX, radius=40, fill=(17, 26, 37, 92), border=(255, 255, 255, 62), blur_radius=18, show_top_line=False, show_bottom_line=False)
+        background = draw_glass_panel(background, PLAYBACK_BOX, radius=28, fill=(15, 23, 34, 92), border=(255, 255, 255, 56), blur_radius=15, show_top_line=False, show_bottom_line=False)
+        background = draw_glass_panel(background, BRAND_BOX, radius=24, fill=(22, 31, 43, 94), border=(255, 255, 255, 54), blur_radius=12, show_top_line=False, show_bottom_line=False)
+        background = draw_glass_panel(background, NOW_PLAYING_BOX, radius=22, fill=(22, 31, 43, 96), border=(255, 255, 255, 54), blur_radius=12, show_top_line=False, show_bottom_line=False)
 
         art = rounded_media(youtube_thumb, ART_SIZE, radius=40, border_width=5)
         art_x = ART_CARD_BOX[0] + ((ART_CARD_BOX[2] - ART_CARD_BOX[0] - ART_SIZE) // 2)
         art_y = 166
-        background = add_glow(
-            background,
-            (art_x - 30, art_y - 24, art_x + ART_SIZE + 34, art_y + ART_SIZE + 42),
-            (*accent_color, 72),
-            blur_radius=74,
-        )
+        background = add_glow(background, (art_x - 30, art_y - 24, art_x + ART_SIZE + 34, art_y + ART_SIZE + 42), (*accent_color, 72), blur_radius=74)
         background.paste(art, (art_x, art_y), art)
 
         avatar = masked_circle(user_dp, AVATAR_SIZE, border_width=6, border_color=(255, 255, 255, 230))
@@ -525,12 +412,7 @@ async def get_thumb(videoid, user_id=None):
         avatar_y = art_y + ART_SIZE - AVATAR_SIZE // 2 + 6
         avatar_x = min(avatar_x, CANVAS_WIDTH - AVATAR_SIZE - 28)
         avatar_y = min(avatar_y, CANVAS_HEIGHT - AVATAR_SIZE - 28)
-        background = add_glow(
-            background,
-            (avatar_x - 18, avatar_y - 16, avatar_x + AVATAR_SIZE + 20, avatar_y + AVATAR_SIZE + 22),
-            (*accent_soft, 64),
-            blur_radius=58,
-        )
+        background = add_glow(background, (avatar_x - 18, avatar_y - 16, avatar_x + AVATAR_SIZE + 20, avatar_y + AVATAR_SIZE + 22), (*accent_soft, 64), blur_radius=58)
         background.paste(avatar, (avatar_x, avatar_y), avatar)
 
         draw = ImageDraw.Draw(background)
@@ -546,48 +428,20 @@ async def get_thumb(videoid, user_id=None):
         now_playing_text = "NOW PLAYING"
         now_playing_center_x = (NOW_PLAYING_BOX[0] + NOW_PLAYING_BOX[2]) / 2
         now_playing_center_y = ((NOW_PLAYING_BOX[1] + NOW_PLAYING_BOX[3]) / 2) + 1
-        draw.text(
-            (now_playing_center_x, now_playing_center_y),
-            now_playing_text,
-            fill=(238, 244, 250),
-            font=eyebrow_font,
-            anchor="mm",
-        )
+        draw.text((now_playing_center_x, now_playing_center_y), now_playing_text, fill=(238, 244, 250), font=eyebrow_font, anchor="mm")
 
         title_lines = wrap_text(draw, title, title_font, 690, max_lines=2)
         title_y = 148
         line_height = 60
         for index, line in enumerate(title_lines):
-            draw_text_with_outline(
-                draw,
-                (60, title_y + (index * line_height)),
-                line,
-                title_font,
-                fill_color=(255, 255, 255),
-                outline_color=(6, 10, 14),
-                outline_width=1,
-            )
+            draw_text_with_outline(draw, (60, title_y + (index * line_height)), line, title_font, fill_color=(255, 255, 255), outline_color=(6, 10, 14), outline_width=1)
 
         subtitle_y = title_y + (len(title_lines) * line_height) + 10
-        draw.text(
-            (60, subtitle_y),
-            trim_text(channel, 34),
-            fill=(215, 225, 235),
-            font=sub_font,
-        )
+        draw.text((60, subtitle_y), trim_text(channel, 34), fill=(215, 225, 235), font=sub_font)
 
         meta_text = f"{trim_text(duration, 10)}  •  {views}  •  YouTube"
-        draw.text(
-            (60, subtitle_y + 42),
-            meta_text,
-            fill=(182, 196, 210),
-            font=meta_font,
-        )
-        draw.rounded_rectangle(
-            (60, subtitle_y + 82, 260, subtitle_y + 88),
-            radius=3,
-            fill=(*accent_color, 190),
-        )
+        draw.text((60, subtitle_y + 42), meta_text, fill=(182, 196, 210), font=meta_font)
+        draw.rounded_rectangle((60, subtitle_y + 82, 260, subtitle_y + 88), radius=3, fill=(*accent_color, 190))
 
         progress_left = PLAYBACK_BOX[0] + 30
         bar_y = PLAYBACK_BOX[1] + 52
@@ -597,83 +451,55 @@ async def get_thumb(videoid, user_id=None):
         progress_ratio = 0.50
         prog_x = bar_x_start + int(bar_width * progress_ratio)
 
-        draw.line(
-            [(bar_x_start, bar_y), (bar_x_end, bar_y)],
-            fill=(255, 255, 255, 165),
-            width=3,
-        )
-        draw.line(
-            [(bar_x_start, bar_y), (prog_x, bar_y)],
-            fill=(*playback_accent, 225),
-            width=4,
-        )
-        draw_waveform(
-            draw,
-            bar_x_start,
-            bar_y - 3,
-            bar_width,
-            34,
-            playback_accent,
-            (255, 255, 255),
-            progress_ratio=progress_ratio,
-            segments=86,
-        )
+        draw.line([(bar_x_start, bar_y), (bar_x_end, bar_y)], fill=(255, 255, 255, 165), width=3)
+        draw.line([(bar_x_start, bar_y), (prog_x, bar_y)], fill=(*playback_accent, 225), width=4)
+        draw_waveform(draw, bar_x_start, bar_y - 3, bar_width, 34, playback_accent, (255, 255, 255), progress_ratio=progress_ratio, segments=86)
 
-        draw.ellipse(
-            [(prog_x - 13, bar_y - 13), (prog_x + 13, bar_y + 13)],
-            fill=(*playback_accent, 58),
-        )
-        draw.ellipse(
-            [(prog_x - 8, bar_y - 8), (prog_x + 8, bar_y + 8)],
-            fill=(255, 255, 255),
-            outline=playback_accent,
-            width=3,
-        )
+        draw.ellipse([(prog_x - 13, bar_y - 13), (prog_x + 13, bar_y + 13)], fill=(*playback_accent, 58))
+        draw.ellipse([(prog_x - 8, bar_y - 8), (prog_x + 8, bar_y + 8)], fill=(255, 255, 255), outline=playback_accent, width=3)
 
         time_y = PLAYBACK_BOX[1] + 62
-        draw.text(
-            (bar_x_start, time_y),
-            "00:00",
-            fill=(255, 255, 255),
-            font=progress_time_font,
-        )
+        draw.text((bar_x_start, time_y), "00:00", fill=(255, 255, 255), font=progress_time_font)
         duration_text_width = text_width(draw, duration, progress_time_font)
-        draw.text(
-            (bar_x_end - duration_text_width, time_y),
-            duration,
-            fill=(255, 255, 255),
-            font=progress_time_font,
-        )
+        draw.text((bar_x_end - duration_text_width, time_y), duration, fill=(255, 255, 255), font=progress_time_font)
 
-        draw_transport_controls(
-            draw,
-            center_x=(PLAYBACK_BOX[0] + PLAYBACK_BOX[2]) // 2,
-            center_y=PLAYBACK_BOX[1] + 86,
-            accent_color=playback_accent,
-        )
+        draw_transport_controls(draw, center_x=(PLAYBACK_BOX[0] + PLAYBACK_BOX[2]) // 2, center_y=PLAYBACK_BOX[1] + 86, accent_color=playback_accent)
 
         brand_name = resolve_brand_name()
         brand_center_x = (BRAND_BOX[0] + BRAND_BOX[2]) / 2
         brand_center_y = ((BRAND_BOX[1] + BRAND_BOX[3]) / 2) + 1
-        draw.text(
-            (brand_center_x, brand_center_y),
-            brand_name,
-            fill=(255, 255, 255),
-            font=brand_font,
-            anchor="mm",
-        )
+        draw.text((brand_center_x, brand_center_y), brand_name, fill=(255, 255, 255), font=brand_font, anchor="mm")
 
-        draw.text(
-            (ART_CARD_BOX[0] + 28, ART_CARD_BOX[3] - 74),
-            trim_text(channel, 22),
-            fill=(232, 239, 247),
-            font=sub_font,
+        draw.text((ART_CARD_BOX[0] + 28, ART_CARD_BOX[3] - 74), trim_text(channel, 22), fill=(232, 239, 247), font=sub_font)
+        draw.text((ART_CARD_BOX[0] + 28, ART_CARD_BOX[3] - 42), f"{views}  •  YouTube", fill=(186, 200, 214), font=progress_label_font)
+
+        # 🟢 CYBERPUNK GLOW WATERMARKS 
+        watermark_font = load_font(TITLE_FONT_PATH, 24)
+        
+        # Left Watermark: BETA BOT HUB (Neon Blue Glow)
+        left_text = "BETA BOT HUB"
+        background = draw_glowing_text(
+            background, 
+            (44, 685), 
+            left_text, 
+            watermark_font, 
+            fill_color=(255, 255, 255, 255), 
+            glow_color=(0, 255, 255, 255), 
+            blur_radius=6
         )
-        draw.text(
-            (ART_CARD_BOX[0] + 28, ART_CARD_BOX[3] - 42),
-            f"{views}  •  YouTube",
-            fill=(186, 200, 214),
-            font=progress_label_font,
+        
+        # Right Watermark: THE SHIV (Neon Pink Glow)
+        right_text = "THE SHIV"
+        draw_temp = ImageDraw.Draw(background)
+        right_text_width = text_width(draw_temp, right_text, watermark_font)
+        background = draw_glowing_text(
+            background, 
+            (1236 - right_text_width, 685), 
+            right_text, 
+            watermark_font, 
+            fill_color=(255, 255, 255, 255), 
+            glow_color=(255, 20, 147, 255), 
+            blur_radius=6
         )
 
         try:
@@ -689,7 +515,10 @@ async def get_thumb(videoid, user_id=None):
         background.save(cache_path)
         return cache_path
 
-    except Exception:
+    except Exception as e:
+        LOGGER.error(f"Failed to generate thumbnail: {e}")
+        LOGGER.error(traceback.format_exc())
+        
         try:
             if os.path.exists(temp_thumb_path):
                 os.remove(temp_thumb_path)
