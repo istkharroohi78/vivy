@@ -29,7 +29,7 @@ TITLE_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font2.ttf"
 META_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font.ttf"
 FALLBACK_AVATAR_URL = "https://files.catbox.moe/0ld5qc.jpg"
 
-# Constants - Enhanced Layout
+# Constants
 CANVAS_WIDTH = 1280
 CANVAS_HEIGHT = 720
 ART_SIZE = 296
@@ -141,12 +141,19 @@ def cache_remote_file(url: str, output_path: str) -> bool:
     return True
 
 
+# 🟢 BULLETPROOF TEXT WIDTH CALCULATOR
 def text_width(draw, text: str, font) -> float:
     try:
-        return draw.textlength(text, font=font)
+        return float(draw.textlength(text, font=font))
     except Exception:
-        bbox = draw.textbbox((0, 0), text, font=font)
-        return bbox[2] - bbox[0]
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            return float(bbox[2] - bbox[0])
+        except Exception:
+            try:
+                return float(draw.textsize(text, font=font)[0])
+            except Exception:
+                return float(len(text) * 12)  # Fallback guess
 
 
 def wrap_text(draw, text: str, font, max_width: int, max_lines: int = 3) -> list[str]:
@@ -192,7 +199,7 @@ def draw_waveform(draw, x_start, y, width, height, accent_color, base_color, pro
     base_rgb = base_color[:3]
 
     for i in range(segments):
-        center_x = x_start + (i * segment_width)
+        center_x = int(x_start + (i * segment_width))
         distance = abs(center_x - active_x) / max(width, 1)
         envelope = math.exp(-((distance / 0.135) ** 2))
         ripple = 0.45 + (0.55 * abs(math.sin((i * 0.39) + 0.8)))
@@ -201,9 +208,9 @@ def draw_waveform(draw, x_start, y, width, height, accent_color, base_color, pro
         color = (*blend_rgb(base_rgb, accent_rgb, strength), int(70 + (185 * strength)))
 
         if bar_height <= 4:
-            draw.ellipse([(center_x - 1.5, y - 1.5), (center_x + 1.5, y + 1.5)], fill=color)
+            draw.ellipse([(center_x - 1, int(y - 1)), (center_x + 1, int(y + 1))], fill=color)
             continue
-        draw.rounded_rectangle([(center_x - 1.5, y - bar_height), (center_x + 1.5, y)], radius=2, fill=color)
+        draw.rounded_rectangle([(center_x - 1, int(y - bar_height)), (center_x + 1, int(y))], radius=2, fill=color)
 
 
 def draw_transport_controls(draw, center_x: int, center_y: int, accent_color):
@@ -234,7 +241,7 @@ def draw_transport_controls(draw, center_x: int, center_y: int, accent_color):
 
 
 def draw_text_with_outline(draw, position, text, font, fill_color, outline_color, outline_width=2):
-    x, y = position
+    x, y = int(position[0]), int(position[1])
     for adj_x in range(-outline_width, outline_width + 1):
         for adj_y in range(-outline_width, outline_width + 1):
             if adj_x != 0 or adj_y != 0:
@@ -249,21 +256,19 @@ def add_glow(base, box, color, blur_radius=70):
     return Image.alpha_composite(base, glow)
 
 
-# 🟢 NEON GLOW WATERMARK FUNCTION
+# 🟢 CYBERPUNK NEON GLOW TEXT
 def draw_glowing_text(base_image, position, text, font, fill_color, glow_color, blur_radius=6):
-    """Draws custom neon-glowing text onto the base image"""
+    x, y = int(position[0]), int(position[1])
     glow_layer = Image.new("RGBA", base_image.size, (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow_layer)
-    glow_draw.text(position, text, font=font, fill=glow_color)
+    glow_draw.text((x, y), text, font=font, fill=glow_color)
     
     glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(blur_radius))
     
-    # Layering twice to make the neon glow intensely pop
     base_image = Image.alpha_composite(base_image, glow_layer)
     base_image = Image.alpha_composite(base_image, glow_layer)
     
-    # Crisp white text layer over the blurred glow
-    ImageDraw.Draw(base_image).text(position, text, font=font, fill=fill_color)
+    ImageDraw.Draw(base_image).text((x, y), text, font=font, fill=fill_color)
     return base_image
 
 
@@ -359,7 +364,10 @@ async def get_thumb(videoid, user_id=None):
                 sp = None
 
         if sp:
-            user_dp = Image.open(sp).convert("RGBA")
+            try:
+                user_dp = Image.open(sp).convert("RGBA")
+            except Exception:
+                user_dp = Image.new("RGBA", (200, 200), (100, 100, 100, 255))
         else:
             if not os.path.isfile(fallback_avatar_path):
                 try:
@@ -428,7 +436,7 @@ async def get_thumb(videoid, user_id=None):
         now_playing_text = "NOW PLAYING"
         now_playing_center_x = (NOW_PLAYING_BOX[0] + NOW_PLAYING_BOX[2]) / 2
         now_playing_center_y = ((NOW_PLAYING_BOX[1] + NOW_PLAYING_BOX[3]) / 2) + 1
-        draw.text((now_playing_center_x, now_playing_center_y), now_playing_text, fill=(238, 244, 250), font=eyebrow_font, anchor="mm")
+        draw.text((int(now_playing_center_x), int(now_playing_center_y)), now_playing_text, fill=(238, 244, 250), font=eyebrow_font, anchor="mm")
 
         title_lines = wrap_text(draw, title, title_font, 690, max_lines=2)
         title_y = 148
@@ -449,7 +457,7 @@ async def get_thumb(videoid, user_id=None):
         bar_x_end = PLAYBACK_BOX[2] - 30
         bar_width = bar_x_end - bar_x_start
         progress_ratio = 0.50
-        prog_x = bar_x_start + int(bar_width * progress_ratio)
+        prog_x = int(bar_x_start + int(bar_width * progress_ratio))
 
         draw.line([(bar_x_start, bar_y), (bar_x_end, bar_y)], fill=(255, 255, 255, 165), width=3)
         draw.line([(bar_x_start, bar_y), (prog_x, bar_y)], fill=(*playback_accent, 225), width=4)
@@ -461,14 +469,14 @@ async def get_thumb(videoid, user_id=None):
         time_y = PLAYBACK_BOX[1] + 62
         draw.text((bar_x_start, time_y), "00:00", fill=(255, 255, 255), font=progress_time_font)
         duration_text_width = text_width(draw, duration, progress_time_font)
-        draw.text((bar_x_end - duration_text_width, time_y), duration, fill=(255, 255, 255), font=progress_time_font)
+        draw.text((int(bar_x_end - duration_text_width), time_y), duration, fill=(255, 255, 255), font=progress_time_font)
 
         draw_transport_controls(draw, center_x=(PLAYBACK_BOX[0] + PLAYBACK_BOX[2]) // 2, center_y=PLAYBACK_BOX[1] + 86, accent_color=playback_accent)
 
         brand_name = resolve_brand_name()
         brand_center_x = (BRAND_BOX[0] + BRAND_BOX[2]) / 2
         brand_center_y = ((BRAND_BOX[1] + BRAND_BOX[3]) / 2) + 1
-        draw.text((brand_center_x, brand_center_y), brand_name, fill=(255, 255, 255), font=brand_font, anchor="mm")
+        draw.text((int(brand_center_x), int(brand_center_y)), brand_name, fill=(255, 255, 255), font=brand_font, anchor="mm")
 
         draw.text((ART_CARD_BOX[0] + 28, ART_CARD_BOX[3] - 74), trim_text(channel, 22), fill=(232, 239, 247), font=sub_font)
         draw.text((ART_CARD_BOX[0] + 28, ART_CARD_BOX[3] - 42), f"{views}  •  YouTube", fill=(186, 200, 214), font=progress_label_font)
