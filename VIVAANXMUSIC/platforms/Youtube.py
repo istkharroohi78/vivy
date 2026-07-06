@@ -10,12 +10,19 @@ from typing import Union
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 from py_yt import VideosSearch, Playlist
+
 # ----------------- CONFIGURATION -----------------
 DOWNLOAD_DIR = "downloads"
 LOGGER = logging.getLogger(__name__)
 
+# 🟢 Primary API
 API_URL = os.environ.get("SHRUTI_API_URL", "https://api.shrutibots.site")
 API_KEY = os.environ.get("SHRUTI_API_KEY", "ShrutiBotsC0WH1GowF2HkGoKv4F3y")
+
+# 🟢 Secondary Fallback API
+WORKER_FALLBACK_API_URL = os.environ.get("WORKER_FALLBACK_API_URL", "https://youtubenewapi.skybotsdeveloper.workers.dev")
+WORKER_FALLBACK_API_KEY = os.environ.get("WORKER_FALLBACK_API_KEY", "itsmesid")
+
 
 def time_to_seconds(time_str):
     stringt = str(time_str)
@@ -26,7 +33,6 @@ def get_safe_filename(title: str, default_id: str) -> str:
         return default_id
     return re.sub(r'[\\/*?:"<>|]', "", title).strip()
 
-# 🟢 THE FIX: Perfect YouTube ID Extractor for all link types
 def extract_video_id(link: str) -> str:
     if "youtu.be/" in link:
         return link.split("youtu.be/")[1].split("?")[0]
@@ -34,7 +40,6 @@ def extract_video_id(link: str) -> str:
         return link.split("v=")[1].split("&")[0]
     return link
 
-# Helper for Safe Async Execution
 async def _async_run(func, *args, **kwargs):
     try:
         loop = asyncio.get_running_loop()
@@ -64,7 +69,13 @@ async def api_download(video_id: str, download_type: str, title: str = None) -> 
                 timeout=aiohttp.ClientTimeout(total=600)
             ) as resp:
                 if resp.status != 200:
-                    LOGGER.error(f"API Error: Status {resp.status}")
+                    LOGGER.error(f"Shruti API Error: Status {resp.status}")
+                    return None
+                
+                # 🟢 CORRUPT FILE CHECK: Ensure response is media, not error text
+                content_type = resp.headers.get("Content-Type", "").lower()
+                if "text" in content_type or "json" in content_type or "html" in content_type:
+                    LOGGER.error("Shruti API returned corrupt data (Error message instead of media)")
                     return None
                 
                 with open(file_path, "wb") as f:
@@ -72,10 +83,62 @@ async def api_download(video_id: str, download_type: str, title: str = None) -> 
                         f.write(chunk)
                         
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            LOGGER.info(f"🟢 Downloaded '{title}' from Shruti API")
             return file_path
+            
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return None
     except Exception as e:
         LOGGER.error(f"Shruti API Download Error: {e}")
+        if os.path.exists(file_path):
+            try: os.remove(file_path)
+            except: pass
+        return None
+
+async def worker_api_fallback_download(video_id: str, download_type: str, title: str = None) -> str:
+    if not WORKER_FALLBACK_API_URL:
+        return None
+
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    filename = get_safe_filename(title, f"worker_{video_id}")
+    ext = "mp4" if download_type == "video" else "mp3"
+    file_path = os.path.join(DOWNLOAD_DIR, f"{filename}.{ext}")
+
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        return file_path
+
+    try:
+        youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{WORKER_FALLBACK_API_URL}/download",
+                params={"url": youtube_url, "type": "audio" if download_type == "audio" else "video", "api_key": WORKER_FALLBACK_API_KEY},
+                timeout=aiohttp.ClientTimeout(total=600)
+            ) as resp:
+                if resp.status != 200:
+                    LOGGER.warning(f"Worker Fallback API Error: Status {resp.status}")
+                    return None
+                
+                # 🟢 CORRUPT FILE CHECK
+                content_type = resp.headers.get("Content-Type", "").lower()
+                if "text" in content_type or "json" in content_type or "html" in content_type:
+                    LOGGER.error("Worker API returned corrupt data (Error message instead of media)")
+                    return None
+                
+                with open(file_path, "wb") as f:
+                    async for chunk in resp.content.iter_chunked(131072):
+                        f.write(chunk)
+                        
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            LOGGER.info(f"🟢 SOURCE-HOPPING SUCCESS: Downloaded '{title}' from Worker API")
+            return file_path
+            
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return None
+    except Exception as e:
+        LOGGER.error(f"Worker API Download Error: {e}")
         if os.path.exists(file_path):
             try: os.remove(file_path)
             except: pass
@@ -115,7 +178,10 @@ async def ytdl_fallback_download(link: str, download_type: str, title: str = Non
     try:
         await _async_run(yt_dlp.YoutubeDL(ydl_opts).download, [link])
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            LOGGER.info(f"🟢 Downloaded via yt-dlp fallback")
             return file_path
+        
+        if os.path.exists(file_path): os.remove(file_path)
         return None
     except Exception as e:
         LOGGER.error(f"yt-dlp fallback error: {str(e)}")
@@ -148,6 +214,8 @@ async def spotify_fallback_download(title: str) -> str:
                                         return file_path
     except Exception as e:
         LOGGER.error(f"Spotify fallback error: {str(e)}")
+        
+    if os.path.exists(file_path): os.remove(file_path)
     return None
 
 async def jiosaavn_fallback_download(title: str) -> str:
@@ -178,6 +246,8 @@ async def jiosaavn_fallback_download(title: str) -> str:
                                         return file_path
     except Exception as e:
         LOGGER.error(f"JioSaavn fallback error: {str(e)}")
+        
+    if os.path.exists(file_path): os.remove(file_path)
     return None
 
 async def soundcloud_fallback_download(title: str) -> str:
@@ -209,6 +279,8 @@ async def soundcloud_fallback_download(title: str) -> str:
             return file_path
     except Exception as e:
         LOGGER.error(f"SoundCloud fallback error: {str(e)}")
+        
+    if os.path.exists(file_path): os.remove(file_path)
     return None
 
 async def download_song(link: str, title: str = None) -> str:
@@ -225,12 +297,21 @@ async def download_song(link: str, title: str = None) -> str:
         except Exception:
             pass
 
+    # 1️⃣ Primary: Shruti API
     api_result = await api_download(video_id, "audio", title)
     if api_result: return api_result
     
+    # 2️⃣ Secondary: Worker Fallback API
+    LOGGER.warning(f"🔴 Shruti API failed/corrupted for '{title}'. Hopping to Worker Fallback API...")
+    worker_result = await worker_api_fallback_download(video_id, "audio", title)
+    if worker_result: return worker_result
+    
+    # 3️⃣ Tertiary: yt-dlp Native
+    LOGGER.warning(f"🔴 Worker API failed for '{title}'. Hopping to yt-dlp...")
     yt_result = await ytdl_fallback_download(link, "audio", title)
     if yt_result: return yt_result
     
+    # 4️⃣ Streaming Platform Fallbacks
     if title:
         LOGGER.warning(f"🔴 YouTube blocked '{title}'. Hopping to Spotify...")
         sp_result = await spotify_fallback_download(title)
@@ -260,8 +341,15 @@ async def download_video(link: str, title: str = None) -> str:
         except:
             pass
 
+    # 1️⃣ Primary: Shruti API
     api_result = await api_download(video_id, "video", title)
     if api_result: return api_result
+    
+    # 2️⃣ Secondary: Worker Fallback API
+    worker_result = await worker_api_fallback_download(video_id, "video", title)
+    if worker_result: return worker_result
+
+    # 3️⃣ Tertiary: yt-dlp Native
     return await ytdl_fallback_download(link, "video", title)
 
 # ----------------- YOUTUBE API CLASS -----------------
