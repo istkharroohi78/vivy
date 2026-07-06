@@ -89,13 +89,20 @@ def rounded_media(image, size: int, radius: int = 36, border_width: int = 5):
     inner_padding = max(border_width - 1, 3)
     inner_size = max(size - (inner_padding * 2), 1)
     fitted = fit_cover(image, inner_size, inner_size)
-    mask = antialiased_rounded_mask(inner_size, max(radius - inner_padding, 1))
+    
+    # SAFE RADIUS CHECK
+    safe_mask_radius = min(max(radius - inner_padding, 1), int(inner_size / 2) - 1)
+    mask = antialiased_rounded_mask(inner_size, safe_mask_radius)
     result.paste(fitted, (inner_padding, inner_padding), mask)
+    
     draw = ImageDraw.Draw(result)
     inset = border_width // 2
+    outline_box_size = size - inset - 1 - inset
+    safe_outline_radius = min(max(radius - 2, 1), int(outline_box_size / 2) - 1)
+    
     draw.rounded_rectangle(
         (inset, inset, size - inset - 1, size - inset - 1),
-        radius=max(radius - 2, 1),
+        radius=safe_outline_radius,
         outline=(255, 255, 255, 210),
         width=border_width,
     )
@@ -141,7 +148,7 @@ def cache_remote_file(url: str, output_path: str) -> bool:
     return True
 
 
-# 🟢 BULLETPROOF TEXT WIDTH CALCULATOR
+# 🟢 TEXT WIDTH CALCULATOR
 def text_width(draw, text: str, font) -> float:
     try:
         return float(draw.textlength(text, font=font))
@@ -153,7 +160,7 @@ def text_width(draw, text: str, font) -> float:
             try:
                 return float(draw.textsize(text, font=font)[0])
             except Exception:
-                return float(len(text) * 12)  # Fallback guess
+                return float(len(text) * 12)
 
 
 def wrap_text(draw, text: str, font, max_width: int, max_lines: int = 3) -> list[str]:
@@ -210,7 +217,9 @@ def draw_waveform(draw, x_start, y, width, height, accent_color, base_color, pro
         if bar_height <= 4:
             draw.ellipse([(center_x - 1, int(y - 1)), (center_x + 1, int(y + 1))], fill=color)
             continue
-        draw.rounded_rectangle([(center_x - 1, int(y - bar_height)), (center_x + 1, int(y))], radius=2, fill=color)
+        
+        # 🟢 ANTI-CRASH: Waveform radius reduced to 1 to match small width
+        draw.rounded_rectangle([(center_x - 1, int(y - bar_height)), (center_x + 1, int(y))], radius=1, fill=color)
 
 
 def draw_transport_controls(draw, center_x: int, center_y: int, accent_color):
@@ -277,22 +286,26 @@ def draw_glass_panel(base, box, radius=34, fill=(18, 28, 40, 122), border=(255, 
     width = x2 - x1
     height = y2 - y1
 
+    # 🟢 ANTI-CRASH: Cap the radius so it never exceeds half the box size
+    safe_radius = min(radius, int(width / 2) - 2, int(height / 2) - 2)
+    safe_radius = max(safe_radius, 0)
+
     shadow = Image.new("RGBA", base.size, (0, 0, 0, 0))
     shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.rounded_rectangle((x1 + 10, y1 + 14, x2 + 10, y2 + 14), radius=radius, fill=(0, 0, 0, 72))
+    shadow_draw.rounded_rectangle((x1 + 10, y1 + 14, x2 + 10, y2 + 14), radius=safe_radius, fill=(0, 0, 0, 72))
     shadow = shadow.filter(ImageFilter.GaussianBlur(22))
     base = Image.alpha_composite(base, shadow)
 
     crop = base.crop((x1, y1, x2, y2)).filter(ImageFilter.GaussianBlur(blur_radius))
     mask = Image.new("L", (width, height), 0)
     mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=255)
+    mask_draw.rounded_rectangle((0, 0, width, height), radius=safe_radius, fill=255)
     base.paste(crop, (x1, y1), mask)
 
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     overlay_draw = ImageDraw.Draw(overlay)
-    overlay_draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=fill)
-    overlay_draw.rounded_rectangle((0, 0, width - 1, height - 1), radius=radius, outline=border, width=2)
+    overlay_draw.rounded_rectangle((0, 0, width, height), radius=safe_radius, fill=fill)
+    overlay_draw.rounded_rectangle((0, 0, width - 1, height - 1), radius=safe_radius, outline=border, width=2)
     
     if show_top_line:
         overlay_draw.line([(26, 24), (width - 28, 24)], fill=(255, 255, 255, 50), width=2)
