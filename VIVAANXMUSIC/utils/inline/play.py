@@ -9,7 +9,8 @@ from VIVAANXMUSIC.utils.formatters import time_to_seconds
 def get_style_map():
     styles = [ButtonStyle.PRIMARY, ButtonStyle.SUCCESS, ButtonStyle.DANGER]
     random.shuffle(styles)
-    return {1: styles[0], 2: styles[1], 3: styles[2], 4: styles[0]}
+    # Guaranteed to give 3 distinct colors
+    return {1: styles[0], 2: styles[1], 3: styles[2]}
 
 
 # 🎵 TRACK BUTTON
@@ -50,7 +51,7 @@ def stream_markup_timer(_, chat_id, played, dur):
     bar = "▰" * filled_blocks + "▱" * (total_blocks - filled_blocks)
 
     buttons = [
-        # ⏱ Timer + Bar
+        # ⏱ Timer + Bar (Color 1)
         [
             InlineKeyboardButton(
                 text=f"{played} {bar} {dur}",
@@ -59,21 +60,21 @@ def stream_markup_timer(_, chat_id, played, dur):
             )
         ],
 
-        # 🎮 Controls (Uniform Color)
+        # 🎮 Controls (Color 2 - Distinct from Timer)
         [
-            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[2]),
+            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
+            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[2]),
+            InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[2]),
+            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[2]),
         ],
 
-        # 🔥 Autoplay Row
+        # 🔥 Autoplay Row (Color 3 - Distinct from Controls)
         [
             InlineKeyboardButton(
                 text="❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖", 
                 callback_data=f"ADMIN Autoplay|{chat_id}",
-                style=sm[2]
+                style=sm[3]
             )
         ],
 
@@ -87,7 +88,7 @@ def stream_markup_timer(_, chat_id, played, dur):
             InlineKeyboardButton(
                 "• ᴄʟᴏꜱᴇ •",
                 callback_data="close",
-                style=sm[3]
+                style=sm[2]
             ),
         ],
     ]
@@ -98,15 +99,15 @@ def stream_markup_timer(_, chat_id, played, dur):
 def stream_markup(_, chat_id):
     sm = get_style_map()
     return [
-        # 🎮 Controls (Uniform Color)
+        # 🎮 Controls (Color 1)
         [
-            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
         ],
-        # 🔥 Autoplay Row
+        # 🔥 Autoplay Row (Color 2)
         [
             InlineKeyboardButton(
                 text="❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖", 
@@ -119,12 +120,12 @@ def stream_markup(_, chat_id):
             InlineKeyboardButton(
                 "✚ ᴀᴅᴅ ᴍᴇ ✚",
                 url=f"https://t.me/{app.username}?startgroup=true",
-                style=sm[1]
+                style=sm[3]
             ),
             InlineKeyboardButton(
                 "• ᴄʟᴏꜱᴇ •",
                 callback_data="close",
-                style=sm[3]
+                style=sm[1]
             ),
         ],
     ]
