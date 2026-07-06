@@ -9,7 +9,8 @@ import config
 from typing import Union
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
-from py_yt import VideosSearch, Playlist
+from youtubesearchpython.__future__ import VideosSearch
+from youtubesearchpython import Playlist
 
 # ----------------- CONFIGURATION -----------------
 DOWNLOAD_DIR = "downloads"
