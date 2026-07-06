@@ -59,13 +59,13 @@ def stream_markup_timer(_, chat_id, played, dur):
             )
         ],
 
-        # 🎮 Controls
+        # 🎮 Controls (Uniform Color)
         [
-            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
-            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
-            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[3]),
+            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[4]),
             InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[4]),
         ],
 
         # 🔥 Autoplay Row
@@ -98,13 +98,13 @@ def stream_markup_timer(_, chat_id, played, dur):
 def stream_markup(_, chat_id):
     sm = get_style_map()
     return [
-        # 🎮 Controls
+        # 🎮 Controls (Uniform Color)
         [
-            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
-            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
-            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[3]),
+            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[4]),
             InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
-            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[4]),
         ],
         # 🔥 Autoplay Row
         [
