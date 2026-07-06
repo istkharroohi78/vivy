@@ -5,18 +5,12 @@ from pyrogram.types import InlineKeyboardButton
 from VIVAANXMUSIC import app
 from VIVAANXMUSIC.utils.formatters import time_to_seconds
 
-# 🎨 Random Colors/Emojis List
-COLORS = ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪", "❤️", "🧡", "💛", "💚", "💙", "💜", "✨", "🌟", "💠"]
-
-def rc():
-    """Returns a random color emoji"""
-    return random.choice(COLORS)
-
 # 🎨 Dynamic Color Generator
 def get_style_map():
     styles = [ButtonStyle.PRIMARY, ButtonStyle.SUCCESS, ButtonStyle.DANGER]
     random.shuffle(styles)
     return {1: styles[0], 2: styles[1], 3: styles[2], 4: styles[0]}
+
 
 # 🎵 TRACK BUTTON
 def track_markup(_, videoid, user_id, channel, fplay):
@@ -24,19 +18,19 @@ def track_markup(_, videoid, user_id, channel, fplay):
     return [
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_1']} {rc()}",
+                text=_["P_B_1"],
                 callback_data=f"MusicStream {videoid}|{user_id}|a|{channel}|{fplay}",
                 style=sm[1]
             ),
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_2']} {rc()}",
+                text=_["P_B_2"],
                 callback_data=f"MusicStream {videoid}|{user_id}|v|{channel}|{fplay}",
                 style=sm[2]
             ),
         ],
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['CLOSE_BUTTON']} {rc()}",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
                 style=sm[3]
             )
@@ -59,7 +53,7 @@ def stream_markup_timer(_, chat_id, played, dur):
         # ⏱ Timer + Bar
         [
             InlineKeyboardButton(
-                text=f"{rc()} {played} {bar} {dur} {rc()}",
+                text=f"{played} {bar} {dur}",
                 callback_data="GetTimer",
                 style=sm[1]
             )
@@ -67,17 +61,17 @@ def stream_markup_timer(_, chat_id, played, dur):
 
         # 🎮 Controls
         [
-            InlineKeyboardButton(f"{rc()} ▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
-            InlineKeyboardButton(f"{rc()} II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
-            InlineKeyboardButton(f"{rc()} ↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[3]),
-            InlineKeyboardButton(f"{rc()} ‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
-            InlineKeyboardButton(f"{rc()} ▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
+            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[3]),
+            InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
         ],
 
         # 🔥 Autoplay Row
         [
             InlineKeyboardButton(
-                text=f"{rc()} ❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖ {rc()}", 
+                text="❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖", 
                 callback_data=f"ADMIN Autoplay|{chat_id}",
                 style=sm[2]
             )
@@ -86,12 +80,12 @@ def stream_markup_timer(_, chat_id, played, dur):
         # 🎯 Bottom Buttons
         [
             InlineKeyboardButton(
-                f"{rc()} ✚ ᴀᴅᴅ ᴍᴇ ✚ {rc()}",
+                "✚ ᴀᴅᴅ ᴍᴇ ✚",
                 url=f"https://t.me/{app.username}?startgroup=true",
                 style=sm[1]
             ),
             InlineKeyboardButton(
-                f"{rc()} • ᴄʟᴏꜱᴇ • {rc()}",
+                "• ᴄʟᴏꜱᴇ •",
                 callback_data="close",
                 style=sm[3]
             ),
@@ -106,16 +100,16 @@ def stream_markup(_, chat_id):
     return [
         # 🎮 Controls
         [
-            InlineKeyboardButton(f"{rc()} ▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
-            InlineKeyboardButton(f"{rc()} II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
-            InlineKeyboardButton(f"{rc()} ↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[3]),
-            InlineKeyboardButton(f"{rc()} ‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
-            InlineKeyboardButton(f"{rc()} ▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("▷", callback_data=f"ADMIN Resume|{chat_id}", style=sm[1]),
+            InlineKeyboardButton("II", callback_data=f"ADMIN Pause|{chat_id}", style=sm[2]),
+            InlineKeyboardButton("↻", callback_data=f"ADMIN Replay|{chat_id}", style=sm[3]),
+            InlineKeyboardButton("‣‣I", callback_data=f"ADMIN Skip|{chat_id}", style=sm[4]),
+            InlineKeyboardButton("▢", callback_data=f"ADMIN Stop|{chat_id}", style=sm[1]),
         ],
         # 🔥 Autoplay Row
         [
             InlineKeyboardButton(
-                text=f"{rc()} ❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖ {rc()}", 
+                text="❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖", 
                 callback_data=f"ADMIN Autoplay|{chat_id}",
                 style=sm[2]
             )
@@ -123,12 +117,12 @@ def stream_markup(_, chat_id):
         # 🎯 Bottom Buttons
         [
             InlineKeyboardButton(
-                f"{rc()} ✚ ᴀᴅᴅ ᴍᴇ ✚ {rc()}",
+                "✚ ᴀᴅᴅ ᴍᴇ ✚",
                 url=f"https://t.me/{app.username}?startgroup=true",
                 style=sm[1]
             ),
             InlineKeyboardButton(
-                f"{rc()} • ᴄʟᴏꜱᴇ • {rc()}",
+                "• ᴄʟᴏꜱᴇ •",
                 callback_data="close",
                 style=sm[3]
             ),
@@ -142,19 +136,19 @@ def autoplay_markup(chat_id):
     return [
         [
             InlineKeyboardButton(
-                text=f"{rc()} ✨ ᴇɴᴀʙʟᴇ {rc()}",
+                text="✨ ᴇɴᴀʙʟᴇ",
                 callback_data=f"ADMIN AutoOn|{chat_id}",
                 style=sm[2]
             ),
             InlineKeyboardButton(
-                text=f"{rc()} ⚡ ᴅɪsᴀʙʟᴇ {rc()}",
+                text="⚡ ᴅɪsᴀʙʟᴇ",
                 callback_data=f"ADMIN AutoOff|{chat_id}",
                 style=sm[3]
             ),
         ],
         [
             InlineKeyboardButton(
-                text=f"{rc()} 🔙 ʙᴀᴄᴋ ᴛᴏ ᴘʟᴀʏᴇʀ {rc()}",
+                text="🔙 ʙᴀᴄᴋ ᴛᴏ ᴘʟᴀʏᴇʀ",
                 callback_data=f"ADMIN AutoRefresh|{chat_id}",
                 style=sm[1]
             )
@@ -168,19 +162,19 @@ def playlist_markup(_, videoid, user_id, ptype, channel, fplay):
     return [
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_1']} {rc()}",
+                text=_["P_B_1"],
                 callback_data=f"ROOHIPlaylists {videoid}|{user_id}|{ptype}|a|{channel}|{fplay}",
                 style=sm[1]
             ),
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_2']} {rc()}",
+                text=_["P_B_2"],
                 callback_data=f"ROOHIPlaylists {videoid}|{user_id}|{ptype}|v|{channel}|{fplay}",
                 style=sm[2]
             ),
         ],
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['CLOSE_BUTTON']} {rc()}",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
                 style=sm[3]
             ),
@@ -194,14 +188,14 @@ def livestream_markup(_, videoid, user_id, mode, channel, fplay):
     return [
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_3']} {rc()}",
+                text=_["P_B_3"],
                 callback_data=f"LiveStream {videoid}|{user_id}|{mode}|{channel}|{fplay}",
                 style=sm[1]
             ),
         ],
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['CLOSE_BUTTON']} {rc()}",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
                 style=sm[3]
             ),
@@ -216,29 +210,29 @@ def slider_markup(_, videoid, user_id, query, query_type, channel, fplay):
     return [
         [
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_1']} {rc()}",
+                text=_["P_B_1"],
                 callback_data=f"MusicStream {videoid}|{user_id}|a|{channel}|{fplay}",
                 style=sm[1]
             ),
             InlineKeyboardButton(
-                text=f"{rc()} {_['P_B_2']} {rc()}",
+                text=_["P_B_2"],
                 callback_data=f"MusicStream {videoid}|{user_id}|v|{channel}|{fplay}",
                 style=sm[2]
             ),
         ],
         [
             InlineKeyboardButton(
-                text=f"{rc()} ◁",
+                text="◁",
                 callback_data=f"slider B|{query_type}|{query}|{user_id}|{channel}|{fplay}",
                 style=sm[1]
             ),
             InlineKeyboardButton(
-                text=f"{rc()} {_['CLOSE_BUTTON']} {rc()}",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {query}|{user_id}",
                 style=sm[3]
             ),
             InlineKeyboardButton(
-                text=f"▷ {rc()}",
+                text="▷",
                 callback_data=f"slider F|{query_type}|{query}|{user_id}|{channel}|{fplay}",
                 style=sm[2]
             ),
