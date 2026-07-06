@@ -7,13 +7,13 @@ from typing import Union
 
 from ntgcalls import TelegramServerError
 from pyrogram import Client
-from pyrogram.enums import ChatType
+from pyrogram.enums import ChatType, ButtonStyle
 from pyrogram.errors import ChatAdminRequired
 from pyrogram.handlers import RawUpdateHandler
 from pyrogram.raw.functions.channels import GetFullChannel
 from pyrogram.raw.functions.messages import GetFullChat
 from pyrogram.raw.types import PeerUser, UpdateGroupCallParticipants
-from pyrogram.types import InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls import PyTgCalls
 from pytgcalls.exceptions import NoActiveGroupCall
 from pytgcalls.types import AudioQuality, ChatUpdate, MediaStream, StreamEnded, Update, VideoQuality
@@ -40,10 +40,7 @@ from VIVAANXMUSIC.utils.database import (
 from VIVAANXMUSIC.utils.exceptions import AssistantErr
 from VIVAANXMUSIC.utils.formatters import check_duration, seconds_to_min, speed_converter
 
-# OLD (isko hata ya rehne de agar use ho raha hai)
 from VIVAANXMUSIC.utils.inline.play import stream_markup
-
-# 🔥 NEW PLAYER BUTTONS
 from VIVAANXMUSIC.utils.inline.player import player_markup
 
 from VIVAANXMUSIC.security import build_subprocess_env
@@ -116,7 +113,6 @@ class Call:
 
         self.active_calls: set[int] = set()
         self._stream_locks: dict[int, asyncio.Lock] = {}
-
 
     def _get_stream_lock(self, chat_id: int) -> asyncio.Lock:
         lock = self._stream_locks.get(chat_id)
@@ -546,6 +542,43 @@ class Call:
             if users == 1:
                 autoend[chat_id] = datetime.now() + timedelta(minutes=1)
 
+    async def _log_autoplay(self, chat_id: int, prev_title: str, next_title: str):
+        """Helper to send Autoplay Logs to the LOGGER_ID"""
+        if not config.LOGGER_ID:
+            return
+        try:
+            chat = await app.get_chat(chat_id)
+            chat_name = chat.title or "Unknown Group"
+            chat_link = chat.invite_link
+            
+            if not chat_link and chat.username:
+                chat_link = f"https://t.me/{chat.username}"
+            if not chat_link:
+                try:
+                    chat_link = await app.export_chat_invite_link(chat_id)
+                except:
+                    chat_link = f"https://t.me/{app.username}?startgroup=true"
+
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔗 ɢʀᴏᴜᴘ ʟɪɴᴋ", url=chat_link, style=ButtonStyle.PRIMARY)]
+            ])
+            
+            text = (
+                f"<b>💡 ᴀᴜᴛᴏᴘʟᴀʏ ʟᴏɢɢᴇʀ</b>\n\n"
+                f"<b>🏠 ɢʀᴏᴜᴘ :</b> {chat_name} [<code>{chat_id}</code>]\n"
+                f"<b>⏮ ᴘʀᴇᴠɪᴏᴜs :</b> {prev_title}\n"
+                f"<b>⏭ ᴜᴘᴄᴏᴍɪɴɢ :</b> {next_title}"
+            )
+            
+            await app.send_message(
+                config.LOGGER_ID,
+                text=text,
+                reply_markup=markup,
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            LOGGER(__name__).warning(f"Autoplay Logger Error: {e}")
+
     async def _enqueue_autoplay_track(self, chat_id: int, finished_track: dict) -> bool:
         if not finished_track or not await get_autoplay(chat_id):
             return False
@@ -555,10 +588,15 @@ class Call:
             return False
 
         last_vidid = str(finished_track.get("vidid") or "")
+        prev_title_log = finished_track.get("title", "Unknown Title")
+        
+        # Don't abort if the last track was Telegram/Soundcloud, trigger generic search instead.
         if not last_vidid or last_vidid in {"telegram", "soundcloud"}:
-            return False
+            raw_title = "latest hit trending songs"
+            last_vidid = "default_seed"
+        else:
+            raw_title = prev_title_log
 
-        raw_title = finished_track.get("title", "Unknown Title")
         title_lower = str(raw_title).lower()
 
         # ==========================================
@@ -661,7 +699,7 @@ class Call:
 
         if valid_choices:
             chosen = random.choice(valid_choices)
-            db.setdefault(chat_id, []).append({
+            track_obj = {
                 "title": chosen["title"],
                 "dur": chosen["dur"],
                 "streamtype": finished_track.get("streamtype", "audio"),
@@ -672,7 +710,9 @@ class Call:
                 "vidid": chosen["vidid"],
                 "seconds": chosen["seconds"],
                 "played": 0,
-            })
+            }
+            db.setdefault(chat_id, []).append(track_obj)
+            asyncio.create_task(self._log_autoplay(chat_id, prev_title_log, track_obj["title"]))
             return True
 
         # ==========================================
@@ -689,24 +729,64 @@ class Call:
             )
         except Exception as err:
             LOGGER(__name__).warning("Autoplay lookup failed for chat %s on %s: %s", chat_id, last_vidid, err)
-            return False
+            recommendation = None
 
-        if not recommendation:
-            return False
+        if recommendation:
+            track_obj = {
+                "title": recommendation["title"].title(),
+                "dur": recommendation["duration_min"],
+                "streamtype": finished_track.get("streamtype", "audio"),
+                "by": "Autoplay 🟢",
+                "user_id": 0,
+                "chat_id": finished_track.get("chat_id", chat_id),
+                "file": f"vid_{recommendation['vidid']}",
+                "vidid": recommendation["vidid"],
+                "seconds": recommendation["duration_sec"],
+                "played": 0,
+            }
+            db.setdefault(chat_id, []).append(track_obj)
+            asyncio.create_task(self._log_autoplay(chat_id, prev_title_log, track_obj["title"]))
+            return True
 
-        db.setdefault(chat_id, []).append({
-            "title": recommendation["title"].title(),
-            "dur": recommendation["duration_min"],
-            "streamtype": finished_track.get("streamtype", "audio"),
-            "by": "Autoplay",
-            "user_id": 0,
-            "chat_id": finished_track.get("chat_id", chat_id),
-            "file": f"vid_{recommendation['vidid']}",
-            "vidid": recommendation["vidid"],
-            "seconds": recommendation["duration_sec"],
-            "played": 0,
-        })
-        return True
+        # ==========================================
+        # 🔴 PHASE 3: ULTIMATE FALLBACK
+        # ==========================================
+        LOGGER(__name__).warning(f"Autoplay Phase 1 & 2 failed for {chat_id}. Triggering Ultimate Fallback.")
+        try:
+            from youtubesearchpython.__future__ import VideosSearch
+            fallback_search = VideosSearch("NCS release popular tracks", limit=1)
+            result = await fallback_search.next()
+            if result and result.get("result"):
+                res = result["result"][0]
+                
+                next_dur = str(res.get("duration", "3:00"))
+                dur_sec = 180
+                if ":" in next_dur:
+                    parts = next_dur.split(":")
+                    if len(parts) == 2: 
+                        dur_sec = int(parts[0]) * 60 + int(parts[1])
+                    elif len(parts) == 3: 
+                        dur_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+
+                track_obj = {
+                    "title": str(res.get("title", "Fallback Track")).title(),
+                    "dur": next_dur,
+                    "streamtype": finished_track.get("streamtype", "audio"),
+                    "by": "Autoplay 🟢",
+                    "user_id": 0,
+                    "chat_id": finished_track.get("chat_id", chat_id),
+                    "file": f"vid_{res.get('id')}",
+                    "vidid": res.get("id"),
+                    "seconds": dur_sec,
+                    "played": 0,
+                }
+                db.setdefault(chat_id, []).append(track_obj)
+                asyncio.create_task(self._log_autoplay(chat_id, prev_title_log, track_obj["title"]))
+                return True
+        except Exception as e:
+            LOGGER(__name__).error(f"Ultimate fallback also failed: {e}")
+
+        return False
 
 
     @capture_internal_err
