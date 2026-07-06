@@ -70,7 +70,18 @@ def dynamic_media_stream(path: str, video: bool = False, ffmpeg_params: str = No
 async def _clear_(chat_id: int) -> None:
     popped = db.pop(chat_id, None)
     if popped:
-        await auto_clean(popped)
+        if isinstance(popped, list):
+            for track in popped:
+                try:
+                    await auto_clean(track)
+                except Exception:
+                    pass
+        else:
+            try:
+                await auto_clean(popped)
+            except Exception:
+                pass
+                
     db[chat_id] = []
     for call_id, info in list(vc_join_call_map.items()):
         if info.get("chat_id") == chat_id:
