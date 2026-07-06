@@ -15,7 +15,7 @@ gradio_client==2.3.0
 gpytranslate
 gtts
 heroku3
-httpx[http2]==0.28.1
+httpx[http2]==0.27.2
 indic-transliteration
 kurigram==2.2.19
 motor
@@ -23,7 +23,7 @@ nekosbest
 ntgcalls==2.1.0
 numpy
 opencv-python
-pillow==12.0.0
+pillow==9.5.0
 psutil
 py-tgcalls==2.2.11
 py-yt-search
