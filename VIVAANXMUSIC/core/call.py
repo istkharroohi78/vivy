@@ -58,8 +58,6 @@ vc_join_event_cache = {}
 vc_join_notice_cache = {}
 
 def dynamic_media_stream(path: str, video: bool = False, ffmpeg_params: str = None) -> MediaStream:
-    if not path:
-        raise TypeError("Argument 'media_path' cannot be None or empty.")
     return MediaStream(
         audio_path=path,
         media_path=path,
@@ -316,7 +314,7 @@ class Call:
             raise
         finally:
             task = vc_join_monitors.get(chat_id)
-            if task and task is asyncio.current_task():
+            if task is asyncio.current_task():
                 vc_join_monitors.pop(chat_id, None)
 
     async def maybe_start_vc_join_notifier(
@@ -373,6 +371,7 @@ class Call:
                     )
                     await asyncio.sleep(1)
 
+
     @capture_internal_err
     async def pause_stream(self, chat_id: int) -> None:
         assistant = await group_assistant(self, chat_id)
@@ -407,6 +406,7 @@ class Call:
         finally:
             self.active_calls.discard(chat_id)
 
+
     @capture_internal_err
     async def force_stop_stream(self, chat_id: int) -> None:
         assistant = await group_assistant(self, chat_id)
@@ -429,11 +429,9 @@ class Call:
         finally:
             self.active_calls.discard(chat_id)
 
+
     @capture_internal_err
     async def skip_stream(self, chat_id: int, link: str, video: Union[bool, str] = None, image: Union[bool, str] = None) -> None:
-        if not link:
-            LOGGER(__name__).warning(f"skip_stream received None/empty link for chat: {chat_id}")
-            return
         assistant = await group_assistant(self, chat_id)
         stream = dynamic_media_stream(path=link, video=bool(video))
         await self._play_stream(assistant, chat_id, stream)
@@ -446,8 +444,6 @@ class Call:
 
     @capture_internal_err
     async def seek_stream(self, chat_id: int, file_path: str, to_seek: str, duration: str, mode: str) -> None:
-        if not file_path:
-            return
         assistant = await group_assistant(self, chat_id)
         ffmpeg_params = f"-ss {to_seek} -to {duration}"
         is_video = mode == "video"
@@ -456,7 +452,7 @@ class Call:
 
     @capture_internal_err
     async def speedup_stream(self, chat_id: int, file_path: str, speed: float, playing: list) -> None:
-        if not file_path or not isinstance(playing, list) or not playing or not isinstance(playing[0], dict):
+        if not isinstance(playing, list) or not playing or not isinstance(playing[0], dict):
             raise AssistantErr("Invalid stream info for speedup.")
 
         assistant = await group_assistant(self, chat_id)
@@ -507,10 +503,9 @@ class Call:
             "old_second": db[chat_id][0].get("seconds"),
         })
 
+
     @capture_internal_err
     async def stream_call(self, link: str) -> None:
-        if not link:
-            return
         assistant = await group_assistant(self, config.LOGGER_ID)
         try:
             await self._play_stream(assistant, config.LOGGER_ID, MediaStream(link))
@@ -530,8 +525,6 @@ class Call:
         video: Union[bool, str] = None,
         image: Union[bool, str] = None,
     ) -> None:
-        if not link:
-            raise AssistantErr("Stream link path cannot be empty.")
         assistant = await group_assistant(self, chat_id)
         lang = await get_lang(chat_id)
         _ = get_string(lang)
@@ -561,6 +554,7 @@ class Call:
                 autoend[chat_id] = datetime.now() + timedelta(minutes=1)
 
     async def _log_autoplay(self, chat_id: int, prev_title: str, next_title: str):
+        """Helper to send Autoplay Logs to the LOGGER_ID"""
         if not config.LOGGER_ID:
             return
         try:
@@ -607,6 +601,7 @@ class Call:
         last_vidid = str(finished_track.get("vidid") or "")
         prev_title_log = finished_track.get("title", "Unknown Title")
         
+        # Don't abort if the last track was Telegram/Soundcloud, trigger generic search instead.
         if not last_vidid or last_vidid in {"telegram", "soundcloud"}:
             raw_title = "latest hit trending songs"
             last_vidid = "default_seed"
@@ -615,6 +610,9 @@ class Call:
 
         title_lower = str(raw_title).lower()
 
+        # ==========================================
+        # 🟢 PHASE 1: SMART RANDOMIZED AUTOPLAY
+        # ==========================================
         lang_pools = {
             "Hindi": ["hindi single track official video", "bollywood latest lyrical song", "latest hindi chill track"],
             "Punjabi": ["latest punjabi single official video", "punjabi trending track lyrical", "punjabi pop blast"],
@@ -728,6 +726,9 @@ class Call:
             asyncio.create_task(self._log_autoplay(chat_id, prev_title_log, track_obj["title"]))
             return True
 
+        # ==========================================
+        # 🟠 PHASE 2: NATIVE YOUTUBE API FALLBACK
+        # ==========================================
         seed_seconds = int(finished_track.get("seconds") or 0)
         max_duration = min(max(seed_seconds * 3, 240), 900) if seed_seconds > 0 else 900
 
@@ -758,6 +759,9 @@ class Call:
             asyncio.create_task(self._log_autoplay(chat_id, prev_title_log, track_obj["title"]))
             return True
 
+        # ==========================================
+        # 🔴 PHASE 3: ULTIMATE FALLBACK
+        # ==========================================
         LOGGER(__name__).warning(f"Autoplay Phase 1 & 2 failed for {chat_id}. Triggering Ultimate Fallback.")
         try:
             from youtubesearchpython.__future__ import VideosSearch
@@ -794,6 +798,7 @@ class Call:
             LOGGER(__name__).error(f"Ultimate fallback also failed: {e}")
 
         return False
+
 
     @capture_internal_err
     async def play(self, client, chat_id: int) -> None:
@@ -851,7 +856,7 @@ class Call:
 
             if "live_" in queued:
                 n, link = await YouTube.video(videoid, True)
-                if n == 0 or not link:
+                if n == 0:
                     return await app.send_message(original_chat_id, text=_["call_6"])
 
                 stream = dynamic_media_stream(path=link, video=video)
@@ -878,7 +883,6 @@ class Call:
 
             elif "vid_" in queued:
                 mystic = await app.send_message(original_chat_id, _["call_7"])
-                file_path = None
                 try:
                     file_path, direct = await YouTube.download(
                         videoid,
@@ -886,21 +890,10 @@ class Call:
                         videoid=True,
                         video=True if str(streamtype) == "video" else False,
                     )
-                except Exception as download_err:
-                    LOGGER(__name__).error(f"YouTube extraction failed: {download_err}")
-
-                # 🟢 SOURCE-HOPPING LAYER (YouTube fail hone par backup targets toggle honge)
-                if not file_path:
-                    await mystic.edit_text(
-                        "⚠️ **YouTube block/limit hit.**\n🔄 *Switching to alternative nodes (SoundCloud/Spotify/Saavn)...*",
-                        disable_web_page_preview=True
+                except:
+                    return await mystic.edit_text(
+                        _["call_6"], disable_web_page_preview=True
                     )
-                    
-                    # NOTE: Yahan source-hopping parser execute hoga jo track metadata match karega
-                    # file_path = await self.fetch_alternative_stream(title) 
-
-                    if not file_path:
-                        return await mystic.edit_text("❌ Sabhi streaming platforms par extraction fail ho gayi. Agla track play karein.")
 
                 stream = dynamic_media_stream(path=file_path, video=video)
                 try:
@@ -996,6 +989,7 @@ class Call:
                         markup="stream",
                     )
 
+
     async def start(self) -> None:
         LOGGER(__name__).info("Starting PyTgCalls Clients...")
         if config.STRING1:
@@ -1087,5 +1081,6 @@ class Call:
             assistant.on_update()(unified_update_handler)
         for raw_client in raw_clients:
             raw_client.add_handler(RawUpdateHandler(raw_group_call_handler), group=99)
+
 
 JARVIS = Call()
