@@ -24,8 +24,8 @@ META_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font.ttf"
 CANVAS_SIZE = (1280, 720)
 
 # 🎨 THEME COLORS
-NEON_PINK = (255, 40, 130)       # Vibrant Pink
-GLOW_PINK = (255, 40, 130, 140)  # Transparent Pink for glow
+NEON_PINK = (255, 40, 130)       
+GLOW_PINK = (255, 40, 130, 140)  
 TEXT_GRAY = (180, 180, 180)
 WHITE = (255, 255, 255)
 
@@ -90,7 +90,7 @@ def draw_exact_icons(draw, cx, cy, icon, fill=WHITE):
 
 async def get_thumb(videoid, user_id=None):
     os.makedirs(CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_neon.png")
+    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_neon_v2.png")
     
     if os.path.isfile(cache_path):
         return cache_path
@@ -150,7 +150,7 @@ async def get_thumb(videoid, user_id=None):
         glow_spread = 15
         glow_draw.rounded_rectangle(
             [(art_x - glow_spread, art_y - glow_spread), (art_x + art_size + glow_spread, art_y + art_size + glow_spread)],
-            radius=40, fill=GLOW_PINK
+            radius=35, fill=GLOW_PINK
         )
         glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(35))
         scene.paste(glow_layer, (0, 0), glow_layer)
@@ -171,7 +171,8 @@ async def get_thumb(videoid, user_id=None):
         
         pill_w = 230
         pill_h = 45
-        draw.rounded_rectangle([(right_x, art_y), (right_x + pill_w, art_y + pill_h)], radius=22, fill=NEON_PINK)
+        # फिक्स: Radius ऊँचाई के आधे (22.5) से कम रखा है (20)
+        draw.rounded_rectangle([(right_x, art_y), (right_x + pill_w, art_y + pill_h)], radius=20, fill=NEON_PINK)
         draw.text((right_x + 30, art_y + 6), "NOW PLAYING", fill=(0, 0, 0), font=font_pill)
 
         # --------------------------------------------------
@@ -208,35 +209,35 @@ async def get_thumb(videoid, user_id=None):
         bar_w = 550
         prog_w = int(bar_w * 0.20) # 20% Fill
         
-        # Base Track
-        draw.rounded_rectangle([(right_x, bar_y), (right_x + bar_w, bar_y + 6)], radius=3, fill=(255, 255, 255, 40))
+        # Base Track (फिक्स: Height 8px, Radius 3px)
+        draw.rounded_rectangle([(right_x, bar_y), (right_x + bar_w, bar_y + 8)], radius=3, fill=(255, 255, 255, 40))
         
-        # Glowing Track
+        # Glowing Track (फिक्स: Height 12px, Radius 5px)
         bar_glow = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
         bar_glow_draw = ImageDraw.Draw(bar_glow)
-        bar_glow_draw.rounded_rectangle([(right_x, bar_y - 2), (right_x + prog_w, bar_y + 8)], radius=4, fill=NEON_PINK)
+        bar_glow_draw.rounded_rectangle([(right_x, bar_y - 2), (right_x + prog_w, bar_y + 10)], radius=4, fill=NEON_PINK)
         bar_glow = bar_glow.filter(ImageFilter.GaussianBlur(8))
         scene.paste(bar_glow, (0, 0), bar_glow)
         
-        # Filled Track & Knob
-        draw = ImageDraw.Draw(scene, "RGBA") # Re-initialize to draw over glow
-        draw.rounded_rectangle([(right_x, bar_y), (right_x + prog_w, bar_y + 6)], radius=3, fill=NEON_PINK)
-        draw.ellipse([(right_x + prog_w - 9, bar_y - 6), (right_x + prog_w + 9, bar_y + 12)], fill=WHITE)
+        # Filled Track & Knob (फिक्स: Height 8px, Radius 3px)
+        draw = ImageDraw.Draw(scene, "RGBA") 
+        draw.rounded_rectangle([(right_x, bar_y), (right_x + prog_w, bar_y + 8)], radius=3, fill=NEON_PINK)
+        draw.ellipse([(right_x + prog_w - 9, bar_y - 6), (right_x + prog_w + 9, bar_y + 14)], fill=WHITE)
         
         # Timestamps
-        draw.text((right_x, bar_y + 20), "00:00", fill=WHITE, font=font_time)
+        draw.text((right_x, bar_y + 22), "00:00", fill=WHITE, font=font_time)
         try:
             dur_w = draw.textlength(duration, font=font_time)
         except:
             dur_w = draw.textsize(duration, font=font_time)[0]
-        draw.text((right_x + bar_w - dur_w, bar_y + 20), duration, fill=WHITE, font=font_time)
+        draw.text((right_x + bar_w - dur_w, bar_y + 22), duration, fill=WHITE, font=font_time)
 
         # --------------------------------------------------
-        # 6. SLICK MEDIA CONTROLS (Extra Touch)
+        # 6. SLICK MEDIA CONTROLS
         # --------------------------------------------------
         ctrl_y = bar_y + 70
         draw_exact_icons(draw, right_x + 220, ctrl_y, "prev", fill=WHITE)
-        draw_exact_icons(draw, right_x + 275, ctrl_y, "pause", fill=NEON_PINK) # Pink Pause Button
+        draw_exact_icons(draw, right_x + 275, ctrl_y, "pause", fill=NEON_PINK)
         draw_exact_icons(draw, right_x + 330, ctrl_y, "next", fill=WHITE)
 
         try:
