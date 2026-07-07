@@ -16,7 +16,7 @@ try:
 except AttributeError:
     LANCZOS = Image.LANCZOS
 
-# 🟢 FONT PATHS
+# 🟢 FONT PATHS (Make sure these fonts exist in your bot)
 TITLE_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font2.ttf"
 META_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font.ttf"
 CANVAS_SIZE = (1280, 720)
@@ -24,13 +24,17 @@ CANVAS_SIZE = (1280, 720)
 # ----------------- HELPER FUNCTIONS ----------------- #
 
 def fit_cover(image, size):
-    """Resizes and crops image to perfectly fit the given size."""
+    """Resizes and crops image to perfectly fit the given size without pixel mismatch."""
     ratio = max(size[0] / image.size[0], size[1] / image.size[1])
     resized = image.resize((int(image.size[0] * ratio), int(image.size[1] * ratio)), LANCZOS)
-    return resized.crop((max((resized.size[0] - size[0]) // 2, 0), 
-                         max((resized.size[1] - size[1]) // 2, 0), 
-                         min(resized.size[0], size[0]), 
-                         min(resized.size[1], size[1])))
+    
+    # Calculate exact center crop coordinates to prevent "images do not match" error
+    left = (resized.size[0] - size[0]) // 2
+    top = (resized.size[1] - size[1]) // 2
+    right = left + size[0]
+    bottom = top + size[1]
+    
+    return resized.crop((left, top, right, bottom))
 
 def get_mask(size, radius, antialias=4):
     """Creates a high-quality rounded mask."""
@@ -54,7 +58,7 @@ def draw_text_with_shadow(draw, position, text, font, fill=(255, 255, 255), shad
 def format_views(view_count_str):
     """Smartly formats views to K, M, B for cleaner UI."""
     try:
-        views_num = int(re.sub(r"\D", "", view_count_str))
+        views_num = int(re.sub(r"\D", "", str(view_count_str)))
         if views_num >= 1_000_000_000:
             return f"{views_num / 1_000_000_000:.1f} B"
         elif views_num >= 1_000_000:
@@ -206,7 +210,13 @@ async def get_thumb(videoid, user_id=None):
         
         # Timestamps
         draw_text_with_shadow(draw, (right_x, bar_y + 25), "1:05", font_small, fill=(200, 200, 200))
-        duration_width = draw.textlength(f"-{duration}", font=font_small)
+        
+        # Fixed duration width calculation for older PIL versions
+        try:
+            duration_width = draw.textlength(f"-{duration}", font=font_small)
+        except AttributeError:
+            duration_width = draw.textsize(f"-{duration}", font=font_small)[0]
+            
         draw_text_with_shadow(draw, (right_w - duration_width, bar_y + 25), f"-{duration}", font_small, fill=(200, 200, 200))
 
         # Media Controls
@@ -234,4 +244,4 @@ async def get_thumb(videoid, user_id=None):
     except Exception as e:
         LOGGER.error(f"Thumbnail Error: {e}")
         return YOUTUBE_IMG_URL
-        
+            
