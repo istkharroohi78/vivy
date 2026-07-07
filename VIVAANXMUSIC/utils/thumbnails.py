@@ -3,6 +3,7 @@ import os
 import re
 import uuid
 import math
+import colorsys
 import aiofiles
 import aiohttp
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
@@ -23,13 +24,26 @@ TITLE_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font2.ttf"
 META_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font.ttf"
 CANVAS_SIZE = (1280, 720)
 
-# 🎨 THEME COLORS
-NEON_PINK = (255, 40, 130)       
-GLOW_PINK = (255, 40, 130, 140)  
 TEXT_GRAY = (180, 180, 180)
 WHITE = (255, 255, 255)
 
 # ----------------- HELPER FUNCTIONS ----------------- #
+
+def get_vibrant_color(image):
+    """थंबनेल से सबसे आकर्षक रंग निकालता है और उसे नियॉन (vibrant) बनाता है।"""
+    img = image.copy().convert("RGB")
+    img = img.resize((1, 1), resample=0)
+    r, g, b = img.getpixel((0, 0))
+    
+    h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
+    s = min(s + 0.4, 1.0) 
+    v = min(v + 0.4, 1.0) 
+    
+    if s < 0.2: 
+        h, s, v = 0.85, 0.9, 0.9
+        
+    r_new, g_new, b_new = colorsys.hsv_to_rgb(h, s, v)
+    return (int(r_new*255), int(g_new*255), int(b_new*255))
 
 def fit_cover(image, size):
     ratio = max(size[0] / image.size[0], size[1] / image.size[1])
@@ -90,7 +104,7 @@ def draw_exact_icons(draw, cx, cy, icon, fill=WHITE):
 
 async def get_thumb(videoid, user_id=None):
     os.makedirs(CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_neon_v2.png")
+    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_brand_v4.png")
     
     if os.path.isfile(cache_path):
         return cache_path
@@ -124,6 +138,11 @@ async def get_thumb(videoid, user_id=None):
                     return YOUTUBE_IMG_URL
 
         source_image = Image.open(temp_thumb_path).convert("RGBA")
+        
+        # 🎨 EXTRACT DYNAMIC THEME COLOR
+        theme_color = get_vibrant_color(source_image)
+        glow_color = (*theme_color, 140) 
+
         background = fit_cover(source_image, CANVAS_SIZE)
         
         # 🟢 डार्क सिनेमैटिक ब्लर
@@ -137,52 +156,46 @@ async def get_thumb(videoid, user_id=None):
         font_stats_value = load_font(TITLE_FONT_PATH, 32)
         font_pill = load_font(TITLE_FONT_PATH, 24)
         font_time = load_font(TITLE_FONT_PATH, 22)
+        font_branding = load_font(TITLE_FONT_PATH, 28) # ब्रांडिंग के लिए फॉन्ट
 
         # --------------------------------------------------
-        # 1. LEFT SIDE: SQUARE ART CARD WITH NEON GLOW
+        # 1. LEFT SIDE: SQUARE ART CARD WITH DYNAMIC GLOW
         # --------------------------------------------------
         art_size = 520 
         art_x, art_y = 70, 100
         
-        # Glow Layer (Art)
         glow_layer = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
         glow_draw = ImageDraw.Draw(glow_layer)
         glow_spread = 15
         glow_draw.rounded_rectangle(
             [(art_x - glow_spread, art_y - glow_spread), (art_x + art_size + glow_spread, art_y + art_size + glow_spread)],
-            radius=35, fill=GLOW_PINK
+            radius=35, fill=glow_color
         )
         glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(35))
         scene.paste(glow_layer, (0, 0), glow_layer)
         
-        # Main Art Image
         art_content = fit_cover(source_image, (art_size, art_size))
         art_mask = get_mask((art_size, art_size), 35)
         scene.paste(art_content, (art_x, art_y), art_mask)
         draw = ImageDraw.Draw(scene, "RGBA")
         
-        # Neon Border around Art
-        draw.rounded_rectangle([(art_x, art_y), (art_x + art_size, art_y + art_size)], radius=35, outline=NEON_PINK, width=6)
+        draw.rounded_rectangle([(art_x, art_y), (art_x + art_size, art_y + art_size)], radius=35, outline=theme_color, width=6)
 
         # --------------------------------------------------
         # 2. RIGHT SIDE: NOW PLAYING PILL
         # --------------------------------------------------
         right_x = 650
-        
         pill_w = 230
         pill_h = 45
-        # फिक्स: Radius ऊँचाई के आधे (22.5) से कम रखा है (20)
-        draw.rounded_rectangle([(right_x, art_y), (right_x + pill_w, art_y + pill_h)], radius=20, fill=NEON_PINK)
+        draw.rounded_rectangle([(right_x, art_y), (right_x + pill_w, art_y + pill_h)], radius=20, fill=theme_color)
         draw.text((right_x + 30, art_y + 6), "NOW PLAYING", fill=(0, 0, 0), font=font_pill)
 
         # --------------------------------------------------
-        # 3. TITLE & NEON LINE
+        # 3. TITLE & DYNAMIC LINE
         # --------------------------------------------------
         title_y = art_y + 80
         draw.text((right_x, title_y), title, fill=WHITE, font=font_title)
-        
-        # Thin Neon Line below title
-        draw.line([(right_x, title_y + 60), (1200, title_y + 60)], fill=NEON_PINK, width=3)
+        draw.line([(right_x, title_y + 60), (1200, title_y + 60)], fill=theme_color, width=3)
 
         # --------------------------------------------------
         # 4. STATS (Duration, Views, Player)
@@ -190,41 +203,34 @@ async def get_thumb(videoid, user_id=None):
         stat_y = title_y + 110
         spacing = 55
         
-        # Duration
         draw.text((right_x, stat_y), "Duration:", fill=TEXT_GRAY, font=font_stats_label)
-        draw.text((right_x + 180, stat_y), duration, fill=NEON_PINK, font=font_stats_value)
+        draw.text((right_x + 180, stat_y), duration, fill=theme_color, font=font_stats_value)
         
-        # Views
         draw.text((right_x, stat_y + spacing), "Views:", fill=TEXT_GRAY, font=font_stats_label)
-        draw.text((right_x + 180, stat_y + spacing), f"{views_str} views", fill=NEON_PINK, font=font_stats_value)
+        draw.text((right_x + 180, stat_y + spacing), f"{views_str} views", fill=theme_color, font=font_stats_value)
         
-        # Channel / Bot Name
         draw.text((right_x, stat_y + spacing*2), "Player:", fill=TEXT_GRAY, font=font_stats_label)
-        draw.text((right_x + 180, stat_y + spacing*2), f"@{channel}", fill=NEON_PINK, font=font_stats_value)
+        draw.text((right_x + 180, stat_y + spacing*2), f"@{channel}", fill=theme_color, font=font_stats_value)
 
         # --------------------------------------------------
-        # 5. GLOWING PROGRESS BAR
+        # 5. DYNAMIC GLOWING PROGRESS BAR
         # --------------------------------------------------
         bar_y = stat_y + spacing*3 + 30
         bar_w = 550
-        prog_w = int(bar_w * 0.20) # 20% Fill
+        prog_w = int(bar_w * 0.20) 
         
-        # Base Track (फिक्स: Height 8px, Radius 3px)
         draw.rounded_rectangle([(right_x, bar_y), (right_x + bar_w, bar_y + 8)], radius=3, fill=(255, 255, 255, 40))
         
-        # Glowing Track (फिक्स: Height 12px, Radius 5px)
         bar_glow = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
         bar_glow_draw = ImageDraw.Draw(bar_glow)
-        bar_glow_draw.rounded_rectangle([(right_x, bar_y - 2), (right_x + prog_w, bar_y + 10)], radius=4, fill=NEON_PINK)
+        bar_glow_draw.rounded_rectangle([(right_x, bar_y - 2), (right_x + prog_w, bar_y + 10)], radius=4, fill=theme_color)
         bar_glow = bar_glow.filter(ImageFilter.GaussianBlur(8))
         scene.paste(bar_glow, (0, 0), bar_glow)
         
-        # Filled Track & Knob (फिक्स: Height 8px, Radius 3px)
         draw = ImageDraw.Draw(scene, "RGBA") 
-        draw.rounded_rectangle([(right_x, bar_y), (right_x + prog_w, bar_y + 8)], radius=3, fill=NEON_PINK)
+        draw.rounded_rectangle([(right_x, bar_y), (right_x + prog_w, bar_y + 8)], radius=3, fill=theme_color)
         draw.ellipse([(right_x + prog_w - 9, bar_y - 6), (right_x + prog_w + 9, bar_y + 14)], fill=WHITE)
         
-        # Timestamps
         draw.text((right_x, bar_y + 22), "00:00", fill=WHITE, font=font_time)
         try:
             dur_w = draw.textlength(duration, font=font_time)
@@ -233,12 +239,30 @@ async def get_thumb(videoid, user_id=None):
         draw.text((right_x + bar_w - dur_w, bar_y + 22), duration, fill=WHITE, font=font_time)
 
         # --------------------------------------------------
-        # 6. SLICK MEDIA CONTROLS
+        # 6. MEDIA CONTROLS
         # --------------------------------------------------
         ctrl_y = bar_y + 70
         draw_exact_icons(draw, right_x + 220, ctrl_y, "prev", fill=WHITE)
-        draw_exact_icons(draw, right_x + 275, ctrl_y, "pause", fill=NEON_PINK)
+        draw_exact_icons(draw, right_x + 275, ctrl_y, "pause", fill=theme_color)
         draw_exact_icons(draw, right_x + 330, ctrl_y, "next", fill=WHITE)
+
+        # --------------------------------------------------
+        # 7. CORNER BRANDING / WATERMARKS
+        # --------------------------------------------------
+        # कलर ट्रांसपेरेंट वाइट रखा है ताकि बैकग्राउंड से ब्लेंड हो जाए
+        brand_color = (255, 255, 255, 200) 
+        
+        # Top Left 
+        draw.text((40, 40), "MUSIC", fill=brand_color, font=font_branding)
+        
+        # Top Right
+        draw.text((CANVAS_SIZE[0] - 40, 40), "KAVYA", fill=brand_color, font=font_branding, anchor="ra")
+        
+        # Bottom Left
+        draw.text((40, CANVAS_SIZE[1] - 40), "BETA BOT HUB", fill=brand_color, font=font_branding, anchor="ld")
+        
+        # Bottom Right
+        draw.text((CANVAS_SIZE[0] - 40, CANVAS_SIZE[1] - 40), "THE SHIV", fill=brand_color, font=font_branding, anchor="rd")
 
         try:
             if os.path.exists(temp_thumb_path):
