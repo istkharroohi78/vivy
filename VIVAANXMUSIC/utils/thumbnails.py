@@ -24,19 +24,19 @@ TITLE_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font2.ttf"
 META_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font.ttf"
 CANVAS_SIZE = (1280, 720)
 
-TEXT_GRAY = (180, 180, 180)
 WHITE = (255, 255, 255)
+TEXT_GRAY = (180, 180, 180)
 
 # ----------------- HELPER FUNCTIONS ----------------- #
 
 def get_vibrant_color(image):
-    """थंबनेल से सबसे आकर्षक रंग निकालता है और उसे नियॉन (vibrant) बनाता है।"""
+    """थंबनेल से सबसे आकर्षक रंग निकालता है (Glow Effect के लिए)"""
     img = image.copy().convert("RGB")
     img = img.resize((1, 1), resample=0)
     r, g, b = img.getpixel((0, 0))
     
     h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
-    s = min(s + 0.4, 1.0) 
+    s = min(s + 0.5, 1.0) 
     v = min(v + 0.4, 1.0) 
     
     if s < 0.2: 
@@ -86,25 +86,47 @@ def trim_text(text: str, limit: int) -> str:
     if len(clean_text) <= limit:
         return clean_text
     return clean_text[: max(limit - 3, 0)].rstrip() + "..."
+
+def draw_star(draw, cx, cy, size, fill):
+    points = []
+    for i in range(10):
+        angle = i * math.pi / 5 - math.pi / 2
+        radius = size if i % 2 == 0 else size * 0.4
+        points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
+    draw.polygon(points, fill=fill)
     
 def draw_exact_icons(draw, cx, cy, icon, fill=WHITE):
+    """Reference Image के हिसाब से बड़े और सॉलिड वाइट आइकॉन्स"""
     if icon == "prev":
-        draw.polygon([(cx + 12, cy - 14), (cx - 2, cy), (cx + 12, cy + 14)], fill=fill)
-        draw.polygon([(cx - 2, cy - 14), (cx - 16, cy), (cx - 16, cy + 14)], fill=fill)
-        draw.rounded_rectangle([(cx - 22, cy - 14), (cx - 16, cy + 14)], radius=2, fill=fill)
+        draw.polygon([(cx + 18, cy - 20), (cx, cy), (cx + 18, cy + 20)], fill=fill)
+        draw.polygon([(cx, cy - 20), (cx - 18, cy), (cx - 18, cy + 20)], fill=fill)
     elif icon == "pause":
-        draw.rounded_rectangle([(cx - 12, cy - 16), (cx - 4, cy + 16)], radius=3, fill=fill)
-        draw.rounded_rectangle([(cx + 4, cy - 16), (cx + 12, cy + 16)], radius=3, fill=fill)
+        draw.rounded_rectangle([(cx - 18, cy - 24), (cx - 6, cy + 24)], radius=4, fill=fill)
+        draw.rounded_rectangle([(cx + 6, cy - 24), (cx + 18, cy + 24)], radius=4, fill=fill)
     elif icon == "next":
-        draw.polygon([(cx - 12, cy - 14), (cx + 2, cy), (cx - 12, cy + 14)], fill=fill)
-        draw.polygon([(cx + 2, cy - 14), (cx + 16, cy), (cx + 16, cy + 14)], fill=fill)
-        draw.rounded_rectangle([(cx + 16, cy - 14), (cx + 22, cy + 14)], radius=2, fill=fill)
+        draw.polygon([(cx - 18, cy - 20), (cx, cy), (cx - 18, cy + 20)], fill=fill)
+        draw.polygon([(cx, cy - 20), (cx + 18, cy), (cx + 18, cy + 20)], fill=fill)
+    elif icon == "vol_down":
+        draw.polygon([(cx - 6, cy - 5), (cx + 2, cy - 5), (cx + 10, cy - 12), (cx + 10, cy + 12), (cx + 2, cy + 5), (cx - 6, cy + 5)], fill=fill)
+    elif icon == "vol_up":
+        draw.polygon([(cx - 14, cy - 6), (cx - 6, cy - 6), (cx + 2, cy - 14), (cx + 2, cy + 14), (cx - 6, cy + 6), (cx - 14, cy + 6)], fill=fill)
+        draw.arc([(cx - 2, cy - 8), (cx + 10, cy + 8)], start=-60, end=60, fill=fill, width=3)
+        draw.arc([(cx - 5, cy - 15), (cx + 18, cy + 15)], start=-50, end=50, fill=fill, width=3)
+    elif icon == "quote":
+        draw.rounded_rectangle([(cx - 20, cy - 16), (cx + 20, cy + 12)], radius=5, outline=fill, width=3)
+        draw.polygon([(cx - 6, cy + 11), (cx + 6, cy + 11), (cx, cy + 22)], fill=fill)
+        draw.text((cx - 6, cy - 2), "”", fill=fill, font=load_font(META_FONT_PATH, 32), anchor="mm")
+        draw.text((cx + 6, cy - 2), "”", fill=fill, font=load_font(META_FONT_PATH, 32), anchor="mm")
+    elif icon == "list":
+        for i in range(3):
+            draw.line([(cx - 12, cy - 12 + (i*12)), (cx + 20, cy - 12 + (i*12))], fill=fill, width=3)
+            draw.ellipse([(cx - 22, cy - 14 + (i*12)), (cx - 17, cy - 9 + (i*12))], fill=fill)
 
 # ----------------- MAIN THUMBNAIL GENERATOR ----------------- #
 
 async def get_thumb(videoid, user_id=None):
     os.makedirs(CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_brand_v4.png")
+    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_clean_v6.png")
     
     if os.path.isfile(cache_path):
         return cache_path
@@ -120,10 +142,10 @@ async def get_thumb(videoid, user_id=None):
             return YOUTUBE_IMG_URL
 
         result = results_data[0]
-        title = trim_text(re.sub(r"[^\w\s&\-']", " ", result.get("title", "")).strip(), 28)
+        title = trim_text(re.sub(r"[^\w\s&\-']", " ", result.get("title", "")).strip(), 25)
         duration = str(result.get("duration") or "00:00")
         views_str = format_views((result.get("viewCount") or {}).get("text") or "0")
-        channel = trim_text(str((result.get("channel") or {}).get("name") or "Unknown Artist"), 20)
+        channel = trim_text(str((result.get("channel") or {}).get("name") or "Unknown Artist"), 35)
         
         thumbnails = result.get("thumbnails", [{}])
         thumbnail_url = thumbnails[-1].get("url", thumbnails[0].get("url", "")).split("?")[0]
@@ -139,130 +161,118 @@ async def get_thumb(videoid, user_id=None):
 
         source_image = Image.open(temp_thumb_path).convert("RGBA")
         
-        # 🎨 EXTRACT DYNAMIC THEME COLOR
+        # 🎨 DYNAMIC GLOW COLOR
         theme_color = get_vibrant_color(source_image)
-        glow_color = (*theme_color, 140) 
+        glow_color = (*theme_color, 160) 
 
         background = fit_cover(source_image, CANVAS_SIZE)
         
-        # 🟢 डार्क सिनेमैटिक ब्लर
-        background = background.filter(ImageFilter.GaussianBlur(55))
-        background = ImageEnhance.Brightness(background).enhance(0.12)
+        # 🟢 Reference Image Background (हैवी ब्लर + डार्क सिनेमैटिक)
+        background = background.filter(ImageFilter.GaussianBlur(65))
+        background = ImageEnhance.Brightness(background).enhance(0.25)
         scene = background.copy()
         
         # 🟢 Fonts 
-        font_title = load_font(TITLE_FONT_PATH, 42)
-        font_stats_label = load_font(TITLE_FONT_PATH, 32)
-        font_stats_value = load_font(TITLE_FONT_PATH, 32)
-        font_pill = load_font(TITLE_FONT_PATH, 24)
-        font_time = load_font(TITLE_FONT_PATH, 22)
-        font_branding = load_font(TITLE_FONT_PATH, 28) # ब्रांडिंग के लिए फॉन्ट
+        font_title = load_font(TITLE_FONT_PATH, 40)
+        font_artist = load_font(META_FONT_PATH, 24)
+        font_time = load_font(META_FONT_PATH, 20)
+        font_views_num = load_font(TITLE_FONT_PATH, 45)
+        font_views_text = load_font(TITLE_FONT_PATH, 20)
 
         # --------------------------------------------------
-        # 1. LEFT SIDE: SQUARE ART CARD WITH DYNAMIC GLOW
+        # 1. LEFT SIDE: SQUARE ART CARD WITH TEXT OVERLAY
         # --------------------------------------------------
-        art_size = 520 
-        art_x, art_y = 70, 100
+        art_size = 560 
+        art_x, art_y = 60, 80
         
+        # Glow Effect
         glow_layer = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
         glow_draw = ImageDraw.Draw(glow_layer)
         glow_spread = 15
         glow_draw.rounded_rectangle(
             [(art_x - glow_spread, art_y - glow_spread), (art_x + art_size + glow_spread, art_y + art_size + glow_spread)],
-            radius=35, fill=glow_color
+            radius=45, fill=glow_color
         )
-        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(35))
+        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(40))
         scene.paste(glow_layer, (0, 0), glow_layer)
         
+        # Main Art Content
         art_content = fit_cover(source_image, (art_size, art_size))
-        art_mask = get_mask((art_size, art_size), 35)
-        scene.paste(art_content, (art_x, art_y), art_mask)
+        art_mask = get_mask((art_size, art_size), 45)
+        
+        left_panel = Image.new("RGBA", (art_size, art_size), (0,0,0,0))
+        left_panel.paste(art_content, (0,0), art_mask)
+        
+        overlay_draw = ImageDraw.Draw(left_panel)
+        # Views & Official Text (Overlaid inside the thumbnail like the reference image)
+        overlay_draw.text((35, art_size - 110), f"{views_str}", fill=WHITE, font=font_views_num)
+        overlay_draw.text((35, art_size - 55), "VIEWS", fill=WHITE, font=font_views_text)
+        
+        overlay_draw.text((art_size - 35, art_size - 95), "OFFICIAL", fill=WHITE, font=font_views_text, anchor="ra")
+        overlay_draw.text((art_size - 35, art_size - 55), "VIDEO", fill=WHITE, font=font_views_text, anchor="ra")
+
+        scene.paste(left_panel, (art_x, art_y), left_panel)
         draw = ImageDraw.Draw(scene, "RGBA")
-        
-        draw.rounded_rectangle([(art_x, art_y), (art_x + art_size, art_y + art_size)], radius=35, outline=theme_color, width=6)
 
         # --------------------------------------------------
-        # 2. RIGHT SIDE: NOW PLAYING PILL
+        # 2. RIGHT SIDE: UI ALIGNMENT
         # --------------------------------------------------
-        right_x = 650
-        pill_w = 230
-        pill_h = 45
-        draw.rounded_rectangle([(right_x, art_y), (right_x + pill_w, art_y + pill_h)], radius=20, fill=theme_color)
-        draw.text((right_x + 30, art_y + 6), "NOW PLAYING", fill=(0, 0, 0), font=font_pill)
+        right_x = 700
+        right_w = 1220
+        center_x = (right_x + right_w) // 2
+        
+        draw.text((right_x, 140), title, fill=WHITE, font=font_title)
+        draw.text((right_x, 200), channel, fill=TEXT_GRAY, font=font_artist)
+        
+        # Top Icons (Star and 3 Dots like reference image)
+        draw.ellipse([(1100, 140), (1150, 190)], fill=(255, 255, 255, 180))
+        draw_star(draw, 1125, 165, size=14, fill=(0, 0, 0)) 
+        
+        draw.ellipse([(1170, 140), (1220, 190)], fill=(255, 255, 255, 180))
+        for i in range(3):
+            draw.ellipse([(1192, 153 + (i*10)), (1198, 159 + (i*10))], fill=(0, 0, 0))
 
         # --------------------------------------------------
-        # 3. TITLE & DYNAMIC LINE
+        # 3. WHITE PROGRESS BAR
         # --------------------------------------------------
-        title_y = art_y + 80
-        draw.text((right_x, title_y), title, fill=WHITE, font=font_title)
-        draw.line([(right_x, title_y + 60), (1200, title_y + 60)], fill=theme_color, width=3)
-
-        # --------------------------------------------------
-        # 4. STATS (Duration, Views, Player)
-        # --------------------------------------------------
-        stat_y = title_y + 110
-        spacing = 55
+        bar_y = 310
+        draw.rounded_rectangle([(right_x, bar_y), (right_w, bar_y + 8)], radius=4, fill=(255, 255, 255, 60))
+        prog_x = right_x + int((right_w - right_x) * 0.1) 
+        draw.rounded_rectangle([(right_x, bar_y), (prog_x, bar_y + 8)], radius=4, fill=WHITE)
+        draw.ellipse([(prog_x - 12, bar_y - 8), (prog_x + 12, bar_y + 16)], fill=WHITE)
         
-        draw.text((right_x, stat_y), "Duration:", fill=TEXT_GRAY, font=font_stats_label)
-        draw.text((right_x + 180, stat_y), duration, fill=theme_color, font=font_stats_value)
-        
-        draw.text((right_x, stat_y + spacing), "Views:", fill=TEXT_GRAY, font=font_stats_label)
-        draw.text((right_x + 180, stat_y + spacing), f"{views_str} views", fill=theme_color, font=font_stats_value)
-        
-        draw.text((right_x, stat_y + spacing*2), "Player:", fill=TEXT_GRAY, font=font_stats_label)
-        draw.text((right_x + 180, stat_y + spacing*2), f"@{channel}", fill=theme_color, font=font_stats_value)
-
-        # --------------------------------------------------
-        # 5. DYNAMIC GLOWING PROGRESS BAR
-        # --------------------------------------------------
-        bar_y = stat_y + spacing*3 + 30
-        bar_w = 550
-        prog_w = int(bar_w * 0.20) 
-        
-        draw.rounded_rectangle([(right_x, bar_y), (right_x + bar_w, bar_y + 8)], radius=3, fill=(255, 255, 255, 40))
-        
-        bar_glow = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
-        bar_glow_draw = ImageDraw.Draw(bar_glow)
-        bar_glow_draw.rounded_rectangle([(right_x, bar_y - 2), (right_x + prog_w, bar_y + 10)], radius=4, fill=theme_color)
-        bar_glow = bar_glow.filter(ImageFilter.GaussianBlur(8))
-        scene.paste(bar_glow, (0, 0), bar_glow)
-        
-        draw = ImageDraw.Draw(scene, "RGBA") 
-        draw.rounded_rectangle([(right_x, bar_y), (right_x + prog_w, bar_y + 8)], radius=3, fill=theme_color)
-        draw.ellipse([(right_x + prog_w - 9, bar_y - 6), (right_x + prog_w + 9, bar_y + 14)], fill=WHITE)
-        
-        draw.text((right_x, bar_y + 22), "00:00", fill=WHITE, font=font_time)
+        # Timestamps
+        draw.text((right_x, bar_y + 25), "0:03", fill=TEXT_GRAY, font=font_time)
         try:
-            dur_w = draw.textlength(duration, font=font_time)
+            dur_w = draw.textlength(f"-{duration}", font=font_time)
         except:
-            dur_w = draw.textsize(duration, font=font_time)[0]
-        draw.text((right_x + bar_w - dur_w, bar_y + 22), duration, fill=WHITE, font=font_time)
+            dur_w = draw.textsize(f"-{duration}", font=font_time)[0]
+        draw.text((right_w - dur_w, bar_y + 25), f"-{duration}", fill=TEXT_GRAY, font=font_time)
 
         # --------------------------------------------------
-        # 6. MEDIA CONTROLS
+        # 4. BIG WHITE MEDIA CONTROLS
         # --------------------------------------------------
-        ctrl_y = bar_y + 70
-        draw_exact_icons(draw, right_x + 220, ctrl_y, "prev", fill=WHITE)
-        draw_exact_icons(draw, right_x + 275, ctrl_y, "pause", fill=theme_color)
-        draw_exact_icons(draw, right_x + 330, ctrl_y, "next", fill=WHITE)
+        ctrl_y = 450
+        draw_exact_icons(draw, center_x - 120, ctrl_y, "prev", fill=WHITE)
+        draw_exact_icons(draw, center_x, ctrl_y, "pause", fill=WHITE)
+        draw_exact_icons(draw, center_x + 120, ctrl_y, "next", fill=WHITE)
 
         # --------------------------------------------------
-        # 7. CORNER BRANDING / WATERMARKS
+        # 5. VOLUME CONTROLS
         # --------------------------------------------------
-        # कलर ट्रांसपेरेंट वाइट रखा है ताकि बैकग्राउंड से ब्लेंड हो जाए
-        brand_color = (255, 255, 255, 200) 
-        
-        # Top Left 
-        draw.text((40, 40), "MUSIC", fill=brand_color, font=font_branding)
-        
-        # Top Right
-        draw.text((CANVAS_SIZE[0] - 40, 40), "KAVYA", fill=brand_color, font=font_branding, anchor="ra")
-        
-        # Bottom Left
-        draw.text((40, CANVAS_SIZE[1] - 40), "BETA BOT HUB", fill=brand_color, font=font_branding, anchor="ld")
-        
-        # Bottom Right
-        draw.text((CANVAS_SIZE[0] - 40, CANVAS_SIZE[1] - 40), "THE SHIV", fill=brand_color, font=font_branding, anchor="rd")
+        vol_y = 600
+        vol_start = right_x + 15
+        vol_end = right_w - 10
+        draw_exact_icons(draw, vol_start, vol_y, "vol_down", fill=WHITE)
+        draw.rounded_rectangle([(vol_start + 35, vol_y - 4), (vol_end - 35, vol_y + 4)], radius=4, fill=WHITE)
+        draw_exact_icons(draw, vol_end, vol_y, "vol_up", fill=WHITE)
+
+        # --------------------------------------------------
+        # 6. BOTTOM ICONS
+        # --------------------------------------------------
+        btm_y = 680
+        draw_exact_icons(draw, center_x - 80, btm_y, "quote", fill=WHITE)
+        draw_exact_icons(draw, center_x + 80, btm_y, "list", fill=WHITE)
 
         try:
             if os.path.exists(temp_thumb_path):
