@@ -23,6 +23,12 @@ TITLE_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font2.ttf"
 META_FONT_PATH = "VIVAANXMUSIC/assets/thumb/font.ttf"
 CANVAS_SIZE = (1280, 720)
 
+# 🎨 THEME COLORS
+NEON_PINK = (255, 40, 130)       # Vibrant Pink
+GLOW_PINK = (255, 40, 130, 140)  # Transparent Pink for glow
+TEXT_GRAY = (180, 180, 180)
+WHITE = (255, 255, 255)
+
 # ----------------- HELPER FUNCTIONS ----------------- #
 
 def fit_cover(image, size):
@@ -67,39 +73,24 @@ def trim_text(text: str, limit: int) -> str:
         return clean_text
     return clean_text[: max(limit - 3, 0)].rstrip() + "..."
     
-def draw_exact_icons(draw, cx, cy, icon, fill=(255, 255, 255)):
+def draw_exact_icons(draw, cx, cy, icon, fill=WHITE):
     if icon == "prev":
-        draw.polygon([(cx + 14, cy - 16), (cx - 2, cy), (cx + 14, cy + 16)], fill=fill)
-        draw.polygon([(cx - 2, cy - 16), (cx - 18, cy), (cx - 18, cy + 16)], fill=fill)
-        draw.rounded_rectangle([(cx - 24, cy - 16), (cx - 18, cy + 16)], radius=2, fill=fill)
+        draw.polygon([(cx + 12, cy - 14), (cx - 2, cy), (cx + 12, cy + 14)], fill=fill)
+        draw.polygon([(cx - 2, cy - 14), (cx - 16, cy), (cx - 16, cy + 14)], fill=fill)
+        draw.rounded_rectangle([(cx - 22, cy - 14), (cx - 16, cy + 14)], radius=2, fill=fill)
     elif icon == "pause":
-        draw.rounded_rectangle([(cx - 14, cy - 20), (cx - 4, cy + 20)], radius=4, fill=fill)
-        draw.rounded_rectangle([(cx + 4, cy - 20), (cx + 14, cy + 20)], radius=4, fill=fill)
+        draw.rounded_rectangle([(cx - 12, cy - 16), (cx - 4, cy + 16)], radius=3, fill=fill)
+        draw.rounded_rectangle([(cx + 4, cy - 16), (cx + 12, cy + 16)], radius=3, fill=fill)
     elif icon == "next":
-        draw.polygon([(cx - 14, cy - 16), (cx + 2, cy), (cx - 14, cy + 16)], fill=fill)
-        draw.polygon([(cx + 2, cy - 16), (cx + 18, cy), (cx + 18, cy + 16)], fill=fill)
-        draw.rounded_rectangle([(cx + 18, cy - 16), (cx + 24, cy + 16)], radius=2, fill=fill)
-    elif icon == "vol_down":
-        draw.polygon([(cx - 8, cy - 6), (cx, cy - 6), (cx + 10, cy - 14), (cx + 10, cy + 14), (cx, cy + 6), (cx - 8, cy + 6)], fill=fill)
-    elif icon == "vol_up":
-        draw.polygon([(cx - 12, cy - 6), (cx - 4, cy - 6), (cx + 6, cy - 14), (cx + 6, cy + 14), (cx - 4, cy + 6), (cx - 12, cy + 6)], fill=fill)
-        draw.arc([(cx + 2, cy - 8), (cx + 14, cy + 8)], start=-60, end=60, fill=fill, width=3)
-        draw.arc([(cx - 2, cy - 16), (cx + 22, cy + 16)], start=-50, end=50, fill=fill, width=3)
-    elif icon == "quote":
-        draw.rounded_rectangle([(cx - 20, cy - 16), (cx + 20, cy + 12)], radius=5, outline=fill, width=3)
-        draw.polygon([(cx - 6, cy + 11), (cx + 6, cy + 11), (cx, cy + 22)], fill=fill)
-        draw.text((cx - 6, cy - 2), "”", fill=fill, font=load_font(META_FONT_PATH, 32), anchor="mm")
-        draw.text((cx + 6, cy - 2), "”", fill=fill, font=load_font(META_FONT_PATH, 32), anchor="mm")
-    elif icon == "list":
-        for i in range(3):
-            draw.line([(cx - 10, cy - 12 + (i*12)), (cx + 20, cy - 12 + (i*12))], fill=fill, width=4)
-            draw.ellipse([(cx - 22, cy - 15 + (i*12)), (cx - 16, cy - 9 + (i*12))], fill=fill)
+        draw.polygon([(cx - 12, cy - 14), (cx + 2, cy), (cx - 12, cy + 14)], fill=fill)
+        draw.polygon([(cx + 2, cy - 14), (cx + 16, cy), (cx + 16, cy + 14)], fill=fill)
+        draw.rounded_rectangle([(cx + 16, cy - 14), (cx + 22, cy + 14)], radius=2, fill=fill)
 
 # ----------------- MAIN THUMBNAIL GENERATOR ----------------- #
 
 async def get_thumb(videoid, user_id=None):
     os.makedirs(CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_v5.png")
+    cache_path = os.path.join(CACHE_DIR, f"{videoid}_{user_id}_neon.png")
     
     if os.path.isfile(cache_path):
         return cache_path
@@ -115,10 +106,10 @@ async def get_thumb(videoid, user_id=None):
             return YOUTUBE_IMG_URL
 
         result = results_data[0]
-        title = trim_text(re.sub(r"[^\w\s&\-']", " ", result.get("title", "")).strip(), 30)
+        title = trim_text(re.sub(r"[^\w\s&\-']", " ", result.get("title", "")).strip(), 28)
         duration = str(result.get("duration") or "00:00")
         views_str = format_views((result.get("viewCount") or {}).get("text") or "0")
-        channel = trim_text(str((result.get("channel") or {}).get("name") or "Unknown Artist"), 35)
+        channel = trim_text(str((result.get("channel") or {}).get("name") or "Unknown Artist"), 20)
         
         thumbnails = result.get("thumbnails", [{}])
         thumbnail_url = thumbnails[-1].get("url", thumbnails[0].get("url", "")).split("?")[0]
@@ -135,88 +126,118 @@ async def get_thumb(videoid, user_id=None):
         source_image = Image.open(temp_thumb_path).convert("RGBA")
         background = fit_cover(source_image, CANVAS_SIZE)
         
-        background = background.filter(ImageFilter.GaussianBlur(40))
-        background = ImageEnhance.Brightness(background).enhance(0.2)
+        # 🟢 डार्क सिनेमैटिक ब्लर
+        background = background.filter(ImageFilter.GaussianBlur(55))
+        background = ImageEnhance.Brightness(background).enhance(0.12)
         scene = background.copy()
         
+        # 🟢 Fonts 
         font_title = load_font(TITLE_FONT_PATH, 42)
-        font_artist = load_font(META_FONT_PATH, 26)
-        font_time = load_font(META_FONT_PATH, 20)
-        font_views_num = load_font(TITLE_FONT_PATH, 48)
-        font_views_text = load_font(TITLE_FONT_PATH, 22)
-        font_branding = load_font(TITLE_FONT_PATH, 28)  # नई ब्रांडिंग के लिए फॉन्ट
+        font_stats_label = load_font(TITLE_FONT_PATH, 32)
+        font_stats_value = load_font(TITLE_FONT_PATH, 32)
+        font_pill = load_font(TITLE_FONT_PATH, 24)
+        font_time = load_font(TITLE_FONT_PATH, 22)
 
         # --------------------------------------------------
-        # LEFT SIDE: LARGE ART CARD
+        # 1. LEFT SIDE: SQUARE ART CARD WITH NEON GLOW
         # --------------------------------------------------
-        art_size = 560
-        art_x, art_y = 70, 90
+        art_size = 520 
+        art_x, art_y = 70, 100
         
+        # Glow Layer (Art)
+        glow_layer = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
+        glow_draw = ImageDraw.Draw(glow_layer)
+        glow_spread = 15
+        glow_draw.rounded_rectangle(
+            [(art_x - glow_spread, art_y - glow_spread), (art_x + art_size + glow_spread, art_y + art_size + glow_spread)],
+            radius=40, fill=GLOW_PINK
+        )
+        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(35))
+        scene.paste(glow_layer, (0, 0), glow_layer)
+        
+        # Main Art Image
         art_content = fit_cover(source_image, (art_size, art_size))
         art_mask = get_mask((art_size, art_size), 35)
+        scene.paste(art_content, (art_x, art_y), art_mask)
+        draw = ImageDraw.Draw(scene, "RGBA")
         
-        left_panel = Image.new("RGBA", (art_size, art_size), (0,0,0,0))
-        left_panel.paste(art_content, (0,0), art_mask)
-        
-        overlay_draw = ImageDraw.Draw(left_panel)
-        overlay_draw.text((40, art_size - 120), f"{views_str}", fill=(255, 255, 255), font=font_views_num)
-        overlay_draw.text((40, art_size - 60), "VIEWS", fill=(255, 255, 255, 200), font=font_views_text)
-        overlay_draw.text((art_size - 40, art_size - 100), "OFFICIAL", fill=(255, 255, 255), font=font_views_text, anchor="ra")
-        overlay_draw.text((art_size - 40, art_size - 60), "VIDEO", fill=(255, 255, 255, 200), font=font_views_text, anchor="ra")
-
-        scene.paste(left_panel, (art_x, art_y), left_panel)
-        draw = ImageDraw.Draw(scene)
+        # Neon Border around Art
+        draw.rounded_rectangle([(art_x, art_y), (art_x + art_size, art_y + art_size)], radius=35, outline=NEON_PINK, width=6)
 
         # --------------------------------------------------
-        # BRANDING TEXT (Top Left & Top Right)
+        # 2. RIGHT SIDE: NOW PLAYING PILL
         # --------------------------------------------------
-        right_x = 700
-        right_w = 1210
-        center_x = (right_x + right_w) // 2
-
-        # Top Left - MUSIC LYRICS
-        draw.text((art_x, 35), "MUSIC LYRICS", fill=(255, 255, 255, 180), font=font_branding)
+        right_x = 650
         
-        # Top Right - KAVYA
-        draw.text((right_w, 35), "KAVYA", fill=(255, 255, 255, 180), font=font_branding, anchor="ra")
+        pill_w = 230
+        pill_h = 45
+        draw.rounded_rectangle([(right_x, art_y), (right_x + pill_w, art_y + pill_h)], radius=22, fill=NEON_PINK)
+        draw.text((right_x + 30, art_y + 6), "NOW PLAYING", fill=(0, 0, 0), font=font_pill)
 
         # --------------------------------------------------
-        # RIGHT SIDE: UI
+        # 3. TITLE & NEON LINE
         # --------------------------------------------------
-        draw.text((right_x, 150), title, fill=(255, 255, 255), font=font_title)
-        draw.text((right_x, 210), channel, fill=(180, 190, 200), font=font_artist)
+        title_y = art_y + 80
+        draw.text((right_x, title_y), title, fill=WHITE, font=font_title)
         
-        # Note: Top white dots overlapping code has been completely removed!
+        # Thin Neon Line below title
+        draw.line([(right_x, title_y + 60), (1200, title_y + 60)], fill=NEON_PINK, width=3)
 
-        bar_y = 330
-        draw.rounded_rectangle([(right_x, bar_y), (right_w, bar_y + 8)], radius=4, fill=(255, 255, 255, 60))
-        prog_x = right_x + int((right_w - right_x) * 0.1)
-        draw.rounded_rectangle([(right_x, bar_y), (prog_x, bar_y + 8)], radius=4, fill=(255, 255, 255))
-        draw.ellipse([(prog_x - 10, bar_y - 6), (prog_x + 10, bar_y + 14)], fill=(255, 255, 255))
+        # --------------------------------------------------
+        # 4. STATS (Duration, Views, Player)
+        # --------------------------------------------------
+        stat_y = title_y + 110
+        spacing = 55
         
-        draw.text((right_x, bar_y + 20), "0:15", fill=(200, 200, 200), font=font_time)
+        # Duration
+        draw.text((right_x, stat_y), "Duration:", fill=TEXT_GRAY, font=font_stats_label)
+        draw.text((right_x + 180, stat_y), duration, fill=NEON_PINK, font=font_stats_value)
+        
+        # Views
+        draw.text((right_x, stat_y + spacing), "Views:", fill=TEXT_GRAY, font=font_stats_label)
+        draw.text((right_x + 180, stat_y + spacing), f"{views_str} views", fill=NEON_PINK, font=font_stats_value)
+        
+        # Channel / Bot Name
+        draw.text((right_x, stat_y + spacing*2), "Player:", fill=TEXT_GRAY, font=font_stats_label)
+        draw.text((right_x + 180, stat_y + spacing*2), f"@{channel}", fill=NEON_PINK, font=font_stats_value)
+
+        # --------------------------------------------------
+        # 5. GLOWING PROGRESS BAR
+        # --------------------------------------------------
+        bar_y = stat_y + spacing*3 + 30
+        bar_w = 550
+        prog_w = int(bar_w * 0.20) # 20% Fill
+        
+        # Base Track
+        draw.rounded_rectangle([(right_x, bar_y), (right_x + bar_w, bar_y + 6)], radius=3, fill=(255, 255, 255, 40))
+        
+        # Glowing Track
+        bar_glow = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
+        bar_glow_draw = ImageDraw.Draw(bar_glow)
+        bar_glow_draw.rounded_rectangle([(right_x, bar_y - 2), (right_x + prog_w, bar_y + 8)], radius=4, fill=NEON_PINK)
+        bar_glow = bar_glow.filter(ImageFilter.GaussianBlur(8))
+        scene.paste(bar_glow, (0, 0), bar_glow)
+        
+        # Filled Track & Knob
+        draw = ImageDraw.Draw(scene, "RGBA") # Re-initialize to draw over glow
+        draw.rounded_rectangle([(right_x, bar_y), (right_x + prog_w, bar_y + 6)], radius=3, fill=NEON_PINK)
+        draw.ellipse([(right_x + prog_w - 9, bar_y - 6), (right_x + prog_w + 9, bar_y + 12)], fill=WHITE)
+        
+        # Timestamps
+        draw.text((right_x, bar_y + 20), "00:00", fill=WHITE, font=font_time)
         try:
-            dur_w = draw.textlength(f"-{duration}", font=font_time)
+            dur_w = draw.textlength(duration, font=font_time)
         except:
-            dur_w = draw.textsize(f"-{duration}", font=font_time)[0]
-        draw.text((right_w - dur_w, bar_y + 20), f"-{duration}", fill=(200, 200, 200), font=font_time)
+            dur_w = draw.textsize(duration, font=font_time)[0]
+        draw.text((right_x + bar_w - dur_w, bar_y + 20), duration, fill=WHITE, font=font_time)
 
-        ctrl_y = 470
-        draw_exact_icons(draw, center_x - 120, ctrl_y, "prev")
-        draw_exact_icons(draw, center_x, ctrl_y, "pause")
-        draw_exact_icons(draw, center_x + 120, ctrl_y, "next")
-
-        vol_y = 590
-        vol_start = right_x + 40
-        vol_end = right_w - 40
-        draw_exact_icons(draw, vol_start - 25, vol_y, "vol_down")
-        draw.rounded_rectangle([(vol_start + 10, vol_y - 4), (vol_end - 10, vol_y + 4)], radius=4, fill=(255, 255, 255, 80))
-        draw.rounded_rectangle([(vol_start + 10, vol_y - 4), (vol_start + 120, vol_y + 4)], radius=4, fill=(255, 255, 255))
-        draw_exact_icons(draw, vol_end + 25, vol_y, "vol_up")
-
-        btm_y = 660
-        draw_exact_icons(draw, center_x - 80, btm_y, "quote", fill=(255, 255, 255, 180))
-        draw_exact_icons(draw, center_x + 80, btm_y, "list", fill=(255, 255, 255, 180))
+        # --------------------------------------------------
+        # 6. SLICK MEDIA CONTROLS (Extra Touch)
+        # --------------------------------------------------
+        ctrl_y = bar_y + 70
+        draw_exact_icons(draw, right_x + 220, ctrl_y, "prev", fill=WHITE)
+        draw_exact_icons(draw, right_x + 275, ctrl_y, "pause", fill=NEON_PINK) # Pink Pause Button
+        draw_exact_icons(draw, right_x + 330, ctrl_y, "next", fill=WHITE)
 
         try:
             if os.path.exists(temp_thumb_path):
