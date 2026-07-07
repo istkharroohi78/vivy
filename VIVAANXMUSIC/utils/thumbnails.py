@@ -66,14 +66,6 @@ def trim_text(text: str, limit: int) -> str:
     if len(clean_text) <= limit:
         return clean_text
     return clean_text[: max(limit - 3, 0)].rstrip() + "..."
-
-def draw_star(draw, cx, cy, size, fill):
-    points = []
-    for i in range(10):
-        angle = i * math.pi / 5 - math.pi / 2
-        radius = size if i % 2 == 0 else size * 0.4
-        points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
-    draw.polygon(points, fill=fill)
     
 def draw_exact_icons(draw, cx, cy, icon, fill=(255, 255, 255)):
     if icon == "prev":
@@ -152,9 +144,13 @@ async def get_thumb(videoid, user_id=None):
         font_time = load_font(META_FONT_PATH, 20)
         font_views_num = load_font(TITLE_FONT_PATH, 48)
         font_views_text = load_font(TITLE_FONT_PATH, 22)
+        font_branding = load_font(TITLE_FONT_PATH, 28)  # नई ब्रांडिंग के लिए फॉन्ट
 
+        # --------------------------------------------------
+        # LEFT SIDE: LARGE ART CARD
+        # --------------------------------------------------
         art_size = 560
-        art_x, art_y = 70, 80
+        art_x, art_y = 70, 90
         
         art_content = fit_cover(source_image, (art_size, art_size))
         art_mask = get_mask((art_size, art_size), 35)
@@ -171,19 +167,26 @@ async def get_thumb(videoid, user_id=None):
         scene.paste(left_panel, (art_x, art_y), left_panel)
         draw = ImageDraw.Draw(scene)
 
+        # --------------------------------------------------
+        # BRANDING TEXT (Top Left & Top Right)
+        # --------------------------------------------------
         right_x = 700
         right_w = 1210
         center_x = (right_x + right_w) // 2
+
+        # Top Left - MUSIC LYRICS
+        draw.text((art_x, 35), "MUSIC LYRICS", fill=(255, 255, 255, 180), font=font_branding)
         
+        # Top Right - KAVYA
+        draw.text((right_w, 35), "KAVYA", fill=(255, 255, 255, 180), font=font_branding, anchor="ra")
+
+        # --------------------------------------------------
+        # RIGHT SIDE: UI
+        # --------------------------------------------------
         draw.text((right_x, 150), title, fill=(255, 255, 255), font=font_title)
         draw.text((right_x, 210), channel, fill=(180, 190, 200), font=font_artist)
         
-        draw.ellipse([(right_w - 90, 150), (right_w - 40, 200)], fill=(255, 255, 255, 30))
-        draw_star(draw, right_w - 65, 175, size=15, fill=(255, 255, 255))
-        
-        draw.ellipse([(right_w - 20, 150), (right_w + 30, 200)], fill=(255, 255, 255, 30))
-        for i in range(3):
-            draw.ellipse([(right_w + 2, 163 + (i*10)), (right_w + 8, 169 + (i*10))], fill=(255, 255, 255))
+        # Note: Top white dots overlapping code has been completely removed!
 
         bar_y = 330
         draw.rounded_rectangle([(right_x, bar_y), (right_w, bar_y + 8)], radius=4, fill=(255, 255, 255, 60))
